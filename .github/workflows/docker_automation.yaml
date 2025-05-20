@@ -1,18 +1,26 @@
 name: Update Docker Images and Notify Discord
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-    types: [merged]
+  workflow_call:
+    inputs:
+      discord_role:
+        required: true
+        type: string
+      course_id:
+        required: true
+        type: string
+    secrets:
+      canvas_api_token:
+        required: true
+      discord_webhook_url:
+        required: true
 
 permissions:
-    contents: write
-    pull-requests: write
+  contents: write
+  pull-requests: write
 
 jobs:
-  build_docker_images:
+  docker_workflow:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,45 +29,50 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get changes
+      - name: Get changed files
         run: |
-            files=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }})
-            {
-              echo "FILES<<EOF"
-              echo "${files}"
-              echo "EOF"
-            } >> $GITHUB_ENV
+          files=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }})
+          echo "FILES<<EOF" >> $GITHUB_ENV
+          echo "$files" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.docker_user }}
+          password: ${{ secrets.docker_password }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Ensure required directories exist
+        run: mkdir -p .github/logs
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
+      - name: Run build_dockers.py
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/repo \
+            -w /repo \
+            ghcr.io/byucscourseops/build_dockers:latest \
+            python /scripts/build_dockers.py \
+              --files "${{ env.FILES }}" \
+              --output-file "/repo/.github/logs/docker_output.json"
 
-      - name: Build docker images
-        run: python ${{ github.workspace }}/.github/scripts/build_dockers.py --files "${{ env.FILES }}" --output-file "${{ github.workspace }}/.github/logs/docker_output.json"
-
-      - name: Get User Avatar URL
+      - name: Get user avatar
         run: |
           AVATAR_URL=$(curl -s https://api.github.com/users/${{ github.actor }} | jq -r '.avatar_url')
           echo "AVATAR_URL=$AVATAR_URL" >> $GITHUB_ENV
 
-      - name: Send notification to Discord
+      - name: Send Discord Notification
         run: |
-              export DISCORD_WEBHOOK_URL=${{ secrets.GHA_235_DISCORD_WEBHOOK }}
-                python ${{ github.workspace }}/.github/scripts/send_notification.py \
-                    --type "docker" \
-                    --payload "${{ github.workspace }}/.github/logs/docker_output.json" \
-                    --author "${{ github.actor }}" \
-                    --author-icon "$AVATAR_URL" \
-                    --branch "${{ github.ref }}" \
-                    --cicd-id "${{ secrets.CICD_NOTIFY_DISCORD_ROLE }}" \
-                    --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          docker run --rm \
+            -v ${{ github.workspace }}:/repo \
+            -w /repo \
+            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
+            ghcr.io/byucscourseops/send_notification:latest \
+            python /scripts/send_notification.py \
+              --type "docker" \
+              --payload "/repo/.github/logs/docker_output.json" \
+              --course-id "${{ inputs.course_id }}" \
+              --author "${{ github.actor }}" \
+              --author-icon "$AVATAR_URL" \
+              --branch "${{ github.ref }}" \
+              --cicd-id "${{ inputs.discord_role }}" \
+              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

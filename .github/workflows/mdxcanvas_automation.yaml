@@ -1,11 +1,19 @@
 name: Update Canvas Material and Notify Discord
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-    types: [merged]
+  workflow_call:
+    inputs:
+      discord_role:
+        required: true
+        type: string
+      course_id:
+        required: true
+        type: string
+    secrets:
+      canvas_api_token:
+        required: true
+      discord_webhook_url:
+        required: true
 
 permissions:
   contents: write
@@ -15,21 +23,21 @@ jobs:
   update_canvas_material:
     runs-on: ubuntu-latest
     environment: production
+
     steps:
       - uses: actions/checkout@v3
 
       - name: Install MDXCanvas
         run: pip install mdxcanvas
 
-      - name: Make Logs Directory
+      - name: Ensure logs directory exists
         run: mkdir -p ${{ github.workspace }}/.github/logs
 
       - name: Run MDXCanvas
         id: run_mdxcanvas
         continue-on-error: true
         run: |
-          mkdir -p ${{ github.workspace }}/.github/logs && \
-          export CANVAS_API_TOKEN=${{ secrets.CANVAS_API_TOKEN }}
+          export CANVAS_API_TOKEN=${{ secrets.canvas_api_token }}
           mdxcanvas --course-info ${{ github.workspace }}/_canvas-material/course-info/cs235_sp2025.json \
                     --global-args ${{ github.workspace }}/_canvas-material/global_args.json \
                     --css ${{ github.workspace }}/_canvas-material/canvas.css \
@@ -43,12 +51,17 @@ jobs:
 
       - name: Send notification to Discord
         run: |
-          export DISCORD_WEBHOOK_URL=${{ secrets.GHA_235_DISCORD_WEBHOOK }}
-            python ${{ github.workspace }}/.github/scripts/send_notification.py \
-                --type "canvas" \
-                --payload "${{ github.workspace }}/.github/logs/mdxcanvas_output.json" \
-                --author "${{ github.actor }}" \
-                --author-icon "$AVATAR_URL" \
-                --branch "${{ github.ref }}" \
-                --cicd-id "${{ secrets.CICD_NOTIFY_DISCORD_ROLE }}" \
-                --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          docker run --rm \
+            -v ${{ github.workspace }}:/repo \
+            -w /repo \
+            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
+            ghcr.io/byucscourseops/send_notification:latest \
+            python /scripts/send_notification.py \
+              --type "canvas" \
+              --payload "/repo/.github/logs/mdxcanvas_output.json" \
+              --course-id "${{ inputs.course_id }}" \
+              --author "${{ github.actor }}" \
+              --author-icon "$AVATAR_URL" \
+              --branch "${{ github.ref }}" \
+              --cicd-id "${{ inputs.discord_role }}" \
+              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
