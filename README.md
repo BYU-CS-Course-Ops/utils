@@ -7,6 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
     types: [closed]
 
 jobs:
@@ -35,7 +36,7 @@ on:
 
 jobs:
   update-canvas:
-    uses: BYU-CS-Course-Ops/utils/.github/workflows/mdxcanvas_automation.yaml
+    uses: BYU-CS-Course-Ops/utils/.github/workflows/mdxcanvas_automation.yaml@main
     with:
       discord_role: ${{ secrets.CICD_NOTIFY_DISCORD_ROLE }}
       course_id: "110"
