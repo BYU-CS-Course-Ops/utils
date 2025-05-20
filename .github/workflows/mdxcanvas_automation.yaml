@@ -9,11 +9,27 @@ on:
       course_id:
         required: true
         type: string
+      course_info_path:
+        required: true
+        type: string
+      global_args_path:
+        required: true
+        type: string
+      template_path:
+        required: true
+        type: string
+      output_path:
+        required: true
+        type: string
+      canvas_css_path:
+        required: false
+        type: string
     secrets:
       canvas_api_token:
         required: true
       discord_webhook_url:
         required: true
+
 
 permissions:
   contents: write
@@ -38,11 +54,19 @@ jobs:
         continue-on-error: true
         run: |
           export CANVAS_API_TOKEN=${{ secrets.canvas_api_token }}
-          mdxcanvas --course-info ${{ github.workspace }}/_canvas-material/course-info/cs235_sp2025.json \
-                    --global-args ${{ github.workspace }}/_canvas-material/global_args.json \
-                    --css ${{ github.workspace }}/_canvas-material/canvas.css \
-                    --output-file ${{ github.workspace }}/.github/logs/mdxcanvas_output.json \
-                    ${{ github.workspace }}/_canvas-material/course.canvas.md.xml.jinja
+      
+          CMD="mdxcanvas --course-info ${{ inputs.course_info_path }} \
+                         --global-args ${{ inputs.global_args_path }}"
+      
+          if [ -n "${{ inputs.canvas_css_path }}" ]; then
+            CMD="$CMD --css ${{ inputs.canvas_css_path }}"
+          fi
+      
+          CMD="$CMD --output-file ${{ inputs.output_path }} \
+                     ${{ inputs.template_path }}"
+      
+          echo "Running: \$CMD"
+          eval $CMD
 
       - name: Get User Avatar URL
         run: |
