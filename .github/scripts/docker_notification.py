@@ -12,6 +12,14 @@ Example payload (15 Apr 2025 - docker_notification.py):
 '''
 
 
+def requires_docker_review(data) -> bool:
+    """
+    Check if there is content to review in the payload.
+    This is used to determine if we should send a role mention.
+    """
+    return data["failed_images"] or data["error"]
+
+
 def check_docker_payload(data) -> bool:
     """
     More specific check if we add more content types to the payload.
@@ -25,9 +33,7 @@ def check_docker_payload(data) -> bool:
     )
 
 
-def docker_format(data, course_id, author, author_icon, branch, cicd_id, action_url):
-    cicd_role = f'<@&{cicd_id}>\n' if cicd_id else ''
-
+def docker_format(data, course_id, author, author_icon, branch, action_url):
     updated_images = (
         '\n'.join(f'- {image}'
                     for image in data['updated_images'])) \
@@ -36,13 +42,12 @@ def docker_format(data, course_id, author, author_icon, branch, cicd_id, action_
 
 
     failed_images = (
-            cicd_role +
             '\n'.join(f'- {image}'
                       for image in data['failed_images'])) \
         if data['failed_images'] \
         else '*No items to review*'
 
-    error = cicd_role + data["error"] if data['error'] else '*No errors*'
+    error = data["error"] if data['error'] else '*No errors*'
 
     return {
         "username": "Gradescope Notifications",

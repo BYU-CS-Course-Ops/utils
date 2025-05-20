@@ -27,6 +27,13 @@ Example payload (mdxcanvas -v 0.3.27):
 }
 '''
 
+def requires_canvas_review(data) -> bool:
+    """
+    Check if there is content to review in the payload.
+    This is used to determine if we should send a role mention.
+    """
+    return data["content_to_review"] or data["error"]
+
 
 def check_canvas_payload(data) -> bool:
     """
@@ -41,9 +48,7 @@ def check_canvas_payload(data) -> bool:
     )
 
 
-def canvas_format(data, course_id, author, author_icon, branch, cicd_id, action_url):
-    cicd_role = f'<@&{cicd_id}>\n' if cicd_id else ''
-
+def canvas_format(data, course_id, author, author_icon, branch, action_url):
     deployed_content = (
         '\n'.join(f'- **{rtype}**: [{content}]({link})' if link else f'- **{rtype}**: {content}'
                   for rtype, content, link in data['deployed_content'])) \
@@ -51,13 +56,12 @@ def canvas_format(data, course_id, author, author_icon, branch, cicd_id, action_
         else '*No items deployed*'
 
     content_to_review = (
-            cicd_role +
             '\n'.join(f'- [{dat[0]}]({dat[1]})'
                       for dat in data['content_to_review'])) \
         if data['content_to_review'] \
         else '*No items to review*'
 
-    error = cicd_role + data["error"] if data['error'] else '*No errors*'
+    error = data["error"] if data['error'] else '*No errors*'
 
     return {
         "username": "Canvas Notifications",
