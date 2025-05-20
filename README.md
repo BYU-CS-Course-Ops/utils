@@ -35,10 +35,10 @@ on:
 
 jobs:
   update-canvas:
-    uses: byucscourseops/shared-workflows/.github/workflows/canvas-notify.yml@main
+    uses: BYU-CS-Course-Ops/utils/.github/workflows/mdxcanvas_automation.yaml
     with:
       discord_role: ${{ secrets.CICD_NOTIFY_DISCORD_ROLE }}
-      course_id: "cs235_sp2025"
+      course_id: "110"
       course_info_path: "${{ github.workspace }}/_canvas-material/course-info/cs235_sp2025.json"
       global_args_path: "${{ github.workspace }}/_canvas-material/global_args.json"
       canvas_css_path: "${{ github.workspace }}/_canvas-material/canvas.css"  # Optional
