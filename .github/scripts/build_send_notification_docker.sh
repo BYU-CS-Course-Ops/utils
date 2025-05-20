@@ -1,0 +1,23 @@
+# Build the send notification script image
+
+IMAGE_NAME="byucscourseops/send_notification"
+IMAGE_TAG="latest"
+
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t ${IMAGE_NAME}:${IMAGE_TAG} \
+    --push \
+    -f - . <<EOF
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /scripts
+
+ADD canvas_notification.py /scripts/canvas_notification.py
+ADD docker_notification.py /scripts/docker_notification.py
+ADD rebuild_all.py /scripts/rebuild_all.py
+ADD send_notification.py /scripts/send_notification.py
+
+ENTRYPOINT ["/bin/bash"]
+EOF
