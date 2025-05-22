@@ -3,13 +3,12 @@ name: Update Docker Images and Notify Discord
 on:
   workflow_call:
     inputs:
-      discord_role:
-        required: true
-        type: string
       course_id:
         required: true
         type: string
     secrets:
+      discord_role:
+        required: true
       canvas_api_token:
         required: true
       discord_webhook_url:
@@ -74,5 +73,5 @@ jobs:
               --author "${{ github.actor }}" \
               --author-icon "$AVATAR_URL" \
               --branch "${{ github.ref }}" \
-              --cicd-id "${{ inputs.discord_role }}" \
+              --cicd-id "${{ secrets.discord_role }}" \
               --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
