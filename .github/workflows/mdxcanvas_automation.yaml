@@ -54,15 +54,15 @@ jobs:
         run: |
           export CANVAS_API_TOKEN=${{ secrets.canvas_api_token }}
       
-          CMD="mdxcanvas --course-info ${{ inputs.course_info_path }} \
-                         --global-args ${{ inputs.global_args_path }}"
+          CMD="mdxcanvas --course-info ${{ github.workspace }}/${{ inputs.course_info_path }} \
+                         --global-args ${{ github.workspace }}/${{ inputs.global_args_path }}"
       
           if [ -n "${{ inputs.canvas_css_path }}" ]; then
-            CMD="$CMD --css ${{ inputs.canvas_css_path }}"
+            CMD="$CMD --css ${{ github.workspace }}/${{ inputs.canvas_css_path }}"
           fi
       
-          CMD="$CMD --output-file ${{ inputs.output_path }} \
-                     ${{ inputs.template_path }}"
+          CMD="$CMD --output-file ${{ github.workspace }}/${{ inputs.output_path }} \
+                     ${{ github.workspace }}/${{ inputs.template_path }}"
       
           echo "Running: \$CMD"
           eval $CMD

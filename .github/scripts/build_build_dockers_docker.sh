@@ -16,5 +16,4 @@ WORKDIR /scripts
 
 ADD build_dockers.py /scripts/build_dockers.py
 
-ENTRYPOINT ["/bin/bash"]
 EOF

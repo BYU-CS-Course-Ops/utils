@@ -9,8 +9,6 @@ on:
     secrets:
       discord_role:
         required: true
-      canvas_api_token:
-        required: true
       discord_webhook_url:
         required: true
 
