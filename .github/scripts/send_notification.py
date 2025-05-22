@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 import json
 import os
-import requests
 from typing import TypedDict
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
