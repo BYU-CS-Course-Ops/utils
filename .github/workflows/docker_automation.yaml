@@ -9,11 +9,11 @@ on:
     secrets:
       discord_role:
         required: true
-      discord_webhook_url:
-        required: true
       docker_user:
         required: true
       docker_password:
+        required: true
+      discord_webhook_url:
         required: true
 
 permissions:
