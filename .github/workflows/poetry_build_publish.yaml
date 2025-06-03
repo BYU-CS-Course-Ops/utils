@@ -1,0 +1,40 @@
+name: poetry_build_publish
+
+on:
+  workflow_call:
+    inputs:
+      pypi_package:
+        required: true
+        type: string
+    secrets:
+      pypi_user:
+        required: true
+      pypi_password:
+        required: true
+
+jobs:
+  check-tomal-version:
+    uses: ./.github/workflows/check_tomal.yaml
+    with:
+        pypi_package: ${{ inputs.pypi_package }}
+
+  build:
+    needs: check-tomal-version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Build pypi package package
+        run: poetry build
+
+      - name: Publish pypi package package
+        env:
+          POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
+          POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
+        run: poetry publish --username $POETRY_PYPI_USERNAME --password $POETRY_PYPI_PASSWORD
+

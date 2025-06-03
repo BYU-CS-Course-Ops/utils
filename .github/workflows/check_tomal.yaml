@@ -1,0 +1,36 @@
+name: Check tomal version
+
+on:
+  workflow_call:
+    inputs:
+      pypi_package:
+        required: true
+        type: string
+
+jobs:
+  check-tomal-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Install pypi package
+        run: pip install "${{ inputs.pypi_package }}"
+
+      - name: Extract version from toml
+        run: |
+          VERSION=$(grep -o 'version = ".*"' ${{ github.workspace }}/pyproject.toml | cut -d'"' -f2)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo {$VERSION}
+
+      - name: Get installed pypi package version
+        run: |
+          PYPI_PACKAGE_VERSION=$(pip show ${{ inputs.pypi_package }} | grep "^Version:" | awk '{print $2}')
+          echo "PYPI_PACKAGE_VERSION=$PYPI_PACKAGE_VERSION" >> $GITHUB_ENV
+
+      - name: Check version mismatch
+        run: |
+          if [ "$(printf '%s\n' "${{ env.VERSION }}" "${{ env.PYPI_PACKAGE_VERSION }}" | sort -V | head -n1)" = "${{ env.VERSION }}" ]; then
+            echo "Error: Please update version in .toml"
+            exit 1
+          fi
