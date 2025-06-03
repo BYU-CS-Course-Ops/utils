@@ -17,13 +17,13 @@ on:
         required: true
 
 jobs:
-  check-tomal-version:
-    uses: ./.github/workflows/check_tomal.yaml
+  check-toml-version:
+    uses: ./.github/workflows/check_toml.yaml
     with:
       pypi_package: ${{ inputs.pypi_package }}
 
   build:
-    needs: check-tomal-version
+    needs: check-toml-version
     runs-on: ubuntu-latest
     outputs:
       build_success: ${{ steps.mark_success.outputs.success }}
