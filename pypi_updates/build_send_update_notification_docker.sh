@@ -16,6 +16,6 @@ RUN pip install discord_webhook
 
 WORKDIR /scripts
 
-ADD send_notification.py /scripts/send_update_notification.py
+ADD send_update_notification.py /scripts/send_update_notification.py
 
 EOF

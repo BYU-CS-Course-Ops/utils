@@ -66,9 +66,12 @@ jobs:
           echo "avatar_url=$AVATAR_URL" >> $GITHUB_ENV
 
       - name: Send notification to Discord
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
         run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/repo \
+            -w /repo \
+            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
+          byucscourseops/send_update_notification:latest \
           CMD="python /scripts/send_update_notification.py \
             --type ${{ inputs.pypi_package }} \
             --author ${{ github.actor }} \
