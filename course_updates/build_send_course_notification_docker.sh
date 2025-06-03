@@ -1,6 +1,6 @@
 # Build the send notification script image
 
-IMAGE_NAME="byucscourseops/send_notification"
+IMAGE_NAME="byucscourseops/send_course_notification"
 IMAGE_TAG="latest"
 
 docker buildx build \
@@ -18,7 +18,6 @@ WORKDIR /scripts
 
 ADD canvas_notification.py /scripts/canvas_notification.py
 ADD docker_notification.py /scripts/docker_notification.py
-ADD rebuild_all.py /scripts/rebuild_all.py
-ADD send_notification.py /scripts/send_notification.py
+ADD send_course_notification.py /scripts/send_course_notification.py
 
 EOF

@@ -1,5 +1,5 @@
 from datetime import datetime
-from send_notification import Field, space, generate_field
+from send_course_notification import Field, space, generate_field
 
 '''
 Example payload (mdxcanvas -v 0.3.27):

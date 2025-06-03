@@ -1,5 +1,5 @@
 from datetime import datetime
-from send_notification import Field, space, generate_field
+from send_course_notification import Field, space, generate_field
 
 '''
 Example payload (15 Apr 2025 - docker_notification.py):

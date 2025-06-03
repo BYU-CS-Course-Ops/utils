@@ -78,8 +78,8 @@ jobs:
             -v ${{ github.workspace }}:/repo \
             -w /repo \
             -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
-            byucscourseops/send_notification:latest \
-            python /scripts/send_notification.py \
+            byucscourseops/send_course_notification:latest \
+            python /scripts/send_course_notification.py \
               --type "canvas" \
               --payload "/repo/.github/logs/mdxcanvas_output.json" \
               --course-id "${{ inputs.course_id }}" \
