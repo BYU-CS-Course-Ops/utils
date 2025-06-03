@@ -10,27 +10,30 @@ on:
 jobs:
   check-tomal-version:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        
-      - name: Install pypi package
+
+      - name: Install PyPI package
         run: pip install "${{ inputs.pypi_package }}"
 
-      - name: Extract version from toml
+      - name: Extract version from pyproject.toml
+        id: extract_version
         run: |
-          VERSION=$(grep -o 'version = ".*"' ${{ github.workspace }}/pyproject.toml | cut -d'"' -f2)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo {$VERSION}
+          VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get installed pypi package version
+      - name: Get installed PyPI package version
+        id: get_pypi_version
         run: |
           PYPI_PACKAGE_VERSION=$(pip show ${{ inputs.pypi_package }} | grep "^Version:" | awk '{print $2}')
-          echo "PYPI_PACKAGE_VERSION=$PYPI_PACKAGE_VERSION" >> $GITHUB_ENV
+          echo "pypi_version=$PYPI_PACKAGE_VERSION" >> $GITHUB_ENV
 
-      - name: Check version mismatch
+      - name: Check for version mismatch
         run: |
-          if [ "$(printf '%s\n' "${{ env.VERSION }}" "${{ env.PYPI_PACKAGE_VERSION }}" | sort -V | head -n1)" = "${{ env.VERSION }}" ]; then
-            echo "Error: Please update version in .toml"
+          if [ "${{ steps.extract_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
+            echo "Error: Version in pyproject.toml matches PyPI. Please update version."
             exit 1
           fi

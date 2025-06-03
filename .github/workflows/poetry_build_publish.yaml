@@ -11,17 +11,23 @@ on:
         required: true
       pypi_password:
         required: true
+      discord_webhook_url:
+        required: true
+      discord_role:
+        required: true
 
 jobs:
   check-tomal-version:
     uses: ./.github/workflows/check_tomal.yaml
     with:
-        pypi_package: ${{ inputs.pypi_package }}
+      pypi_package: ${{ inputs.pypi_package }}
 
   build:
     needs: check-tomal-version
     runs-on: ubuntu-latest
-
+    outputs:
+      build_success: ${{ steps.mark_success.outputs.success }}
+      version: ${{ steps.extract_version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -29,12 +35,53 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
 
-      - name: Build pypi package package
+      - name: Build PyPI package
         run: poetry build
 
-      - name: Publish pypi package package
+      - name: Publish PyPI package
         env:
           POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
           POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
         run: poetry publish --username $POETRY_PYPI_USERNAME --password $POETRY_PYPI_PASSWORD
 
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Mark success
+        if: ${{ success() }}
+        id: mark_success
+        run: echo "success=true" >> $GITHUB_OUTPUT
+
+  notify-discord:
+    needs: [check-tomal-version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get User Avatar URL
+        id: avatar
+        run: |
+          AVATAR_URL=$(curl -s https://api.github.com/users/${{ github.actor }} | jq -r '.avatar_url')
+          echo "avatar_url=$AVATAR_URL" >> $GITHUB_ENV
+
+      - name: Send notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
+        run: |
+          CMD="python /scripts/send_update_notification.py \
+            --type ${{ inputs.pypi_package }} \
+            --author ${{ github.actor }} \
+            --author-icon ${{ env.avatar_url }} \
+            --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ '${{ needs.check-tomal-version.result }}' == 'success' ] && \
+             [ '${{ needs.build.outputs.build_success }}' == 'true' ]; then
+            CMD="$CMD --success 1"
+          fi
+
+          CMD="$CMD --version ${{ needs.build.outputs.version }} \
+              --cicd-id ${{ secrets.discord_role }}"
+
+          echo "$CMD"
+          eval $CMD
