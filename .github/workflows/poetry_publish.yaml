@@ -56,7 +56,7 @@ jobs:
         run: echo "success=true" >> $GITHUB_OUTPUT
 
   notify-discord:
-    needs: [check-tomal-version, build]
+    needs: [check-toml-version, build]
     runs-on: ubuntu-latest
     steps:
       - name: Get User Avatar URL
@@ -75,7 +75,7 @@ jobs:
             --author-icon ${{ env.avatar_url }} \
             --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          if [ '${{ needs.check-tomal-version.result }}' == 'success' ] && \
+          if [ '${{ needs.check-toml-version.result }}' == 'success' ] && \
              [ '${{ needs.build.outputs.build_success }}' == 'true' ]; then
             CMD="$CMD --success 1"
           fi
