@@ -74,7 +74,8 @@ jobs:
             --author-icon ${{ env.avatar_url }} \
             --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       
-          if [ '${{ needs.build.outputs.success }}' == 'true' ]; then
+          if [ '${{ needs.build.outputs.success }}' == 'true' ] && \
+             [ '${{ needs.check-toml-version.outputs.mismatch }}' == 'false' ] ; then
             CMD="$CMD --success 1"
           fi
       
