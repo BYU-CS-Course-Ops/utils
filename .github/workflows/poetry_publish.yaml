@@ -38,23 +38,23 @@ jobs:
       - name: Build PyPI package
         run: poetry build
 
-      - name: Publish PyPI package
-        env:
-          POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
-          POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
-        run: poetry publish --username $POETRY_PYPI_USERNAME --password $POETRY_PYPI_PASSWORD
-        continue-on-error: true
-
       - name: Extract version from pyproject.toml
         id: extract_version
         run: |
           VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Mark success
-        if: ${{ success() }}
-        id: mark_success
-        run: echo "success=true" >> $GITHUB_OUTPUT
+      - name: Publish PyPI package
+        id: publish
+        env:
+          POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
+          POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
+        run: |
+          if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
 
   notify-discord:
     needs: [check-toml-version, build]
@@ -74,8 +74,7 @@ jobs:
             --author-icon ${{ env.avatar_url }} \
             --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       
-          if [ '${{ needs.check-toml-version.result }}' == 'success' ] && \
-             [ '${{ needs.build.outputs.build_success }}' == 'true' ]; then
+          if [ '${{ needs.build.outputs.build_success }}' == 'true' ]; then
             CMD="$CMD --success 1"
           fi
       
