@@ -67,24 +67,26 @@ jobs:
 
       - name: Send notification to Discord
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/repo \
-            -w /repo \
-            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
-          byucscourseops/send_update_notification:latest \
           CMD="python /scripts/send_update_notification.py \
             --type ${{ inputs.pypi_package }} \
             --author ${{ github.actor }} \
             --author-icon ${{ env.avatar_url }} \
             --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
+      
           if [ '${{ needs.check-toml-version.result }}' == 'success' ] && \
              [ '${{ needs.build.outputs.build_success }}' == 'true' ]; then
             CMD="$CMD --success 1"
           fi
-
+      
           CMD="$CMD --version ${{ needs.build.outputs.version }} \
               --cicd-id ${{ secrets.discord_role }}"
-
+      
           echo "$CMD"
-          eval $CMD
+      
+          docker run --rm \
+            -v ${{ github.workspace }}:/repo \
+            -w /repo \
+            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
+            byucscourseops/send_update_notification:latest \
+            sh -c "$CMD"
+
