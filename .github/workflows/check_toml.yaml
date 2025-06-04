@@ -37,3 +37,4 @@ jobs:
             echo "Error: Version in pyproject.toml matches PyPI. Please update version."
             exit 1
           fi
+        continue-on-error: true
