@@ -43,6 +43,7 @@ jobs:
           POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
           POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
         run: poetry publish --username $POETRY_PYPI_USERNAME --password $POETRY_PYPI_PASSWORD
+        continue-on-error: true
 
       - name: Extract version from pyproject.toml
         id: extract_version
