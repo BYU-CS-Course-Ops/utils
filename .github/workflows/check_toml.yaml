@@ -11,6 +11,7 @@ jobs:
   check-toml-version:
     runs-on: ubuntu-latest
     outputs:
+      mismatch: ${{ steps.extract_version.outputs.version }}
       version: ${{ steps.extract_version.outputs.version }}
     steps:
       - name: Checkout repository
@@ -32,9 +33,11 @@ jobs:
           echo "pypi_version=$PYPI_PACKAGE_VERSION" >> $GITHUB_ENV
 
       - name: Check for version mismatch
+        id: mismaych
         run: |
           if [ "${{ steps.extract_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
             echo "Error: Version in pyproject.toml matches PyPI. Please update version."
+            echo "mismatch=true" >> $GITHUB_OUTPUT
             exit 1
           fi
         continue-on-error: true
