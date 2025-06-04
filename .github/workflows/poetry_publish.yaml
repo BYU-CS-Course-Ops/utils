@@ -26,7 +26,7 @@ jobs:
     needs: check-toml-version
     runs-on: ubuntu-latest
     outputs:
-      build_success: ${{ steps.mark_success.outputs.success }}
+      success: ${{ steps.publish.outputs.success }}
       version: ${{ steps.extract_version.outputs.version }}
     steps:
       - name: Checkout repository
