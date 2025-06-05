@@ -1,4 +1,4 @@
-name: Check toml version
+name: check_toml_version
 
 on:
   workflow_call:
@@ -6,19 +6,28 @@ on:
       pypi_package:
         required: true
         type: string
+    outputs:
+      mismatch:
+        description: "Whether pyproject.toml version differs from PyPI"
+        value: ${{ jobs.check.outputs.mismatch }}
 
 jobs:
-  check-toml-version:
+  check:
     runs-on: ubuntu-latest
     outputs:
-      mismatch: ${{ steps.mismatch.outputs.mismatch }}
-      version: ${{ steps.extract_version.outputs.version }}
+      mismatch: ${{ steps.extract_mismatch.outputs.mismatch }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install PyPI package
-        run: pip install "${{ inputs.pypi_package }}"
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Get version from PyPI
+        id: get_pypi_version
+        run: |
+          VERSION=$(curl -s https://pypi.org/pypi/${{ inputs.pypi_package }}/json | jq -r .info.version)
+          echo "pypi_version=$VERSION" >> $GITHUB_ENV
 
       - name: Extract version from pyproject.toml
         id: extract_version
@@ -26,20 +35,13 @@ jobs:
           VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get installed PyPI package version
-        id: get_pypi_version
-        run: |
-          PYPI_PACKAGE_VERSION=$(pip show ${{ inputs.pypi_package }} | grep "^Version:" | awk '{print $2}')
-          echo "pypi_version=$PYPI_PACKAGE_VERSION" >> $GITHUB_ENV
-
       - name: Check for version mismatch
-        id: mismatch
+        id: extract_mismatch
         run: |
           if [ "${{ steps.extract_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
-            echo "Error: Version in pyproject.toml matches PyPI. Please update version."
-            echo "mismatch=true" >> $GITHUB_OUTPUT
-            exit 1
-         else
+            echo "Version matches PyPI — no update"
             echo "mismatch=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version mismatch — safe to publish"
+            echo "mismatch=true" >> $GITHUB_OUTPUT
           fi
-        continue-on-error: true
