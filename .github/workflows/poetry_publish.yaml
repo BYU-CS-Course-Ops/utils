@@ -21,7 +21,7 @@ jobs:
     uses: ./.github/workflows/check_toml.yaml
     with:
       pypi_package: ${{ inputs.pypi_package }}
-    secrets: inherit  # If the sub-workflow needs secrets to query PyPI
+    secrets: inherit
 
   poetry-publish:
     needs: check-toml-version
@@ -51,20 +51,25 @@ jobs:
           POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
           POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
         run: |
-          if [ "${{ needs.check-toml-version.outputs.mismatch }}" == "false" ]; then
-            if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
-              echo "success=true" >> $GITHUB_OUTPUT
-            else
-              echo "success=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "Skipping publish due to version mismatch."
+          if [ "${{ needs.check-toml-version.outputs.uped_toml }}" != "true" ]; then
+            echo "❌ pyproject.toml version was not updated — skipping publish"
             echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
+            echo "✅ Publish succeeded"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Publish failed"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
           fi
 
   notify-discord:
     needs: [check-toml-version, poetry-publish]
     runs-on: ubuntu-latest
+    if: always()  # Notify on both success and failure
     steps:
       - name: Get User Avatar URL
         id: avatar
@@ -81,8 +86,10 @@ jobs:
             --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           if [ '${{ needs.poetry-publish.outputs.success }}' == 'true' ] && \
-             [ '${{ needs.check-toml-version.outputs.mismatch }}' == 'true' ]; then
+             [ '${{ needs.check-toml-version.outputs.uped_toml }}' == 'true' ]; then
             CMD="$CMD --success 1"
+          else
+            CMD="$CMD --success 0"
           fi
 
           CMD="$CMD --version ${{ needs.poetry-publish.outputs.version }} \

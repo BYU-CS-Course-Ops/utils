@@ -7,15 +7,15 @@ on:
         required: true
         type: string
     outputs:
-      mismatch:
+      uped_tomal:
         description: "Whether pyproject.toml version differs from PyPI"
-        value: ${{ jobs.check.outputs.mismatch }}
+        value: ${{ jobs.check.outputs.uped_tomal }}
 
 jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      mismatch: ${{ steps.extract_mismatch.outputs.mismatch }}
+      uped_tomal: ${{ steps.extract_update.outputs.uped_tomal }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -35,13 +35,13 @@ jobs:
           VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check for version mismatch
-        id: extract_mismatch
+      - name: Check for version update
+        id: extract_update
         run: |
           if [ "${{ steps.extract_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
             echo "Version matches PyPI — no update"
-            echo "mismatch=false" >> $GITHUB_OUTPUT
+            echo "uped_tomal=false" >> $GITHUB_OUTPUT
           else
-            echo "Version mismatch — safe to publish"
-            echo "mismatch=true" >> $GITHUB_OUTPUT
+            echo "Version bumped — safe to publish"
+            echo "uped_tomal=true" >> $GITHUB_OUTPUT
           fi
