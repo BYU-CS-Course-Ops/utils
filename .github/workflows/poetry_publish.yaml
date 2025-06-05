@@ -51,9 +51,14 @@ jobs:
           POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
           POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
         run: |
-          if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
-            echo "success=true" >> $GITHUB_OUTPUT
+          if [ "${{ needs.check-toml-version.outputs.mismatch }}" == "false" ]; then
+            if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
+              echo "success=true" >> $GITHUB_OUTPUT
+            else
+              echo "success=false" >> $GITHUB_OUTPUT
+            fi
           else
+            echo "Skipping publish due to version mismatch."
             echo "success=false" >> $GITHUB_OUTPUT
           fi
 
@@ -76,7 +81,7 @@ jobs:
             --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           if [ '${{ needs.poetry-publish.outputs.success }}' == 'true' ] && \
-             [ '${{ needs.check-toml-version.outputs.mismatch }}' == 'false' ]; then
+             [ '${{ needs.check-toml-version.outputs.mismatch }}' == 'true' ]; then
             CMD="$CMD --success 1"
           fi
 

@@ -11,18 +11,19 @@ jobs:
   check-toml-version:
     uses: ./.github/workflows/check_toml.yaml
     with:
-        pypi_package: ${{ inputs.pypi_package }}
+      pypi_package: ${{ inputs.pypi_package }}
 
   build:
     needs: check-toml-version
+    if: needs.check-toml-version.outputs.mismatch == 'false'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        
+
       - name: Install Poetry
         run: pip install poetry
 
-      - name: Build pypi package package
+      - name: Build PyPI package
         run: poetry build
