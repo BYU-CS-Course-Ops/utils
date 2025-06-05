@@ -15,7 +15,7 @@ jobs:
 
   build:
     needs: check-toml-version
-    if: needs.check-toml-version.outputs.uped_tomal == 'true'
+    if: needs.check-toml-version.outputs.uped_toml == 'true'
     runs-on: ubuntu-latest
 
     steps:

@@ -7,15 +7,15 @@ on:
         required: true
         type: string
     outputs:
-      uped_tomal:
+      uped_toml:
         description: "Whether pyproject.toml version differs from PyPI"
-        value: ${{ jobs.check.outputs.uped_tomal }}
+        value: ${{ jobs.check.outputs.uped_toml }}
 
 jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      uped_tomal: ${{ steps.extract_update.outputs.uped_tomal }}
+      uped_toml: ${{ steps.extract_update.outputs.uped_toml }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -40,8 +40,8 @@ jobs:
         run: |
           if [ "${{ steps.extract_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
             echo "Version matches PyPI — no update"
-            echo "uped_tomal=false" >> $GITHUB_OUTPUT
+            echo "uped_toml=false" >> $GITHUB_OUTPUT
           else
             echo "Version bumped — safe to publish"
-            echo "uped_tomal=true" >> $GITHUB_OUTPUT
+            echo "uped_toml=true" >> $GITHUB_OUTPUT
           fi
