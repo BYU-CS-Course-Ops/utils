@@ -122,17 +122,19 @@ def run_docker_scripts(docker_scripts: set[Path], result):
             result.add_failed_image(docker_image)
 
 
-def main(files: str, output_file: str):
+def main(files: str, output_file: str, root_dir: str):
+    root = Path(root_dir).resolve()
+
     # Check if the include folder has been modified
     # If yes, rebuild all docker images
     if has_include(files):
-        docker_files = rebuild_all()
+        docker_files = rebuild_all(root)
 
     # If no, find the docker images for the changed assignments
     else:
         # Pathify the diff files
         changed_files = [
-            (Path(__file__).parent.parent.parent.absolute() / file).resolve()
+            (root / file).resolve()
             for file in files.split()
         ]
 
@@ -170,6 +172,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--files')
     parser.add_argument('--output-file', required=True)
+    parser.add_argument('--root-dir', required=True)
     args = parser.parse_args()
 
-    main(files=args.files, output_file=args.output_file)
+    main(files=args.files, output_file=args.output_file, root_dir=args.root_dir)
