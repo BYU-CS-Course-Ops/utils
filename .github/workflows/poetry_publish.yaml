@@ -17,7 +17,14 @@ on:
         required: true
 
 jobs:
+  check-toml-version:
+    uses: ./.github/workflows/check_toml.yaml
+    with:
+      pypi_package: ${{ inputs.pypi_package }}
+    secrets: inherit
+
   poetry-publish:
+    needs: check-toml-version
     runs-on: ubuntu-latest
     outputs:
       success: ${{ steps.publish.outputs.success }}
@@ -25,16 +32,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Check TOML version
-        id: check
-        uses: ./.github/actions/check-toml
-        with:
-          pypi_package: ${{ inputs.pypi_package }}
-
-      - name: Exit if not version bumped
-        if: steps.check.outputs.uped_toml != 'true'
-        run: echo "No version bump — skipping build/publish" && exit 1
 
       - name: Install Poetry
         run: pip install poetry
@@ -54,6 +51,12 @@ jobs:
           POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
           POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
         run: |
+          if [ "${{ needs.check-toml-version.outputs.uped_toml }}" != "true" ]; then
+            echo "❌ pyproject.toml version was not updated — skipping publish"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
           if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
             echo "✅ Publish succeeded"
             echo "success=true" >> $GITHUB_OUTPUT
@@ -64,7 +67,7 @@ jobs:
           fi
 
   notify-discord:
-    needs: poetry-publish
+    needs: [check-toml-version, poetry-publish]
     runs-on: ubuntu-latest
     if: always()  # Notify on both success and failure
     steps:
@@ -83,7 +86,7 @@ jobs:
             --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           if [ '${{ needs.poetry-publish.outputs.success }}' == 'true' ] && \
-             [ '${{ steps.check.outputs.uped_toml }}' == 'true' ]; then
+             [ '${{ needs.check-toml-version.outputs.uped_toml }}' == 'true' ]; then
             CMD="$CMD --success 1"
           fi
 
