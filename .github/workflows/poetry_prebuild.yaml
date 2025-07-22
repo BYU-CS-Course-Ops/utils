@@ -8,19 +8,22 @@ on:
         type: string
 
 jobs:
-  check-toml-version:
-    uses: ./.github/workflows/check_toml.yaml
-    with:
-      pypi_package: ${{ inputs.pypi_package }}
-
   build:
-    needs: check-toml-version
-    if: needs.check-toml-version.outputs.uped_toml == 'true'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Check TOML version
+        id: check
+        uses: ./.github/actions/check-toml
+        with:
+          pypi_package: ${{ inputs.pypi_package }}
+
+      - name: Exit if not version bumped
+        if: steps.check.outputs.uped_toml != 'true'
+        run: echo "Version not bumped — skipping build" && exit 0
 
       - name: Install Poetry
         run: pip install poetry

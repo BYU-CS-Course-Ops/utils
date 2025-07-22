@@ -1,0 +1,34 @@
+name: Check TOML Version
+
+description: Compares pyproject.toml version to PyPI
+
+inputs:
+  pypi_package:
+    required: true
+    type: string
+
+outputs:
+  uped_toml:
+    value: ${{ steps.extract_update.outputs.uped_toml }}
+    description: "Whether pyproject.toml version differs from PyPI"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+    - run: pip install requests
+    - id: get_pypi_version
+      run: |
+        VERSION=$(curl -s https://pypi.org/pypi/${{ inputs.pypi_package }}/json | jq -r .info.version)
+        echo "pypi_version=$VERSION" >> $GITHUB_ENV
+    - id: extract_version
+      run: |
+        VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+    - id: extract_update
+      run: |
+        if [ "${{ steps.extract_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
+          echo "uped_toml=false" >> $GITHUB_OUTPUT
+        else
+          echo "uped_toml=true" >> $GITHUB_OUTPUT
+        fi
