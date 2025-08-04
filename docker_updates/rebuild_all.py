@@ -43,12 +43,11 @@ def find_all_scripts(dir: Path, docker_files) -> set[Path]:
     return docker_files
 
 
-def rebuild_all() -> set[Path]:
+def rebuild_all(root: Path) -> set[Path]:
     """
     Get all docker scripts in the repository.
 
     :return: A set of docker scripts.
     """
     docker_files = set()
-    root = Path(__file__).parent.parent.parent.absolute()
     return find_all_scripts(root, docker_files)
