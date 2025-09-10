@@ -54,7 +54,7 @@ jobs:
             byucscourseops/build_dockers:latest \
             python /scripts/build_dockers.py \
               --files "${{ env.FILES }}" \
-              --output-file "/repo/.github/logs/docker_output.json"
+              --output-file "/repo/.github/logs/docker_output.json" \
               --root-dir "${{ github.workspace }}" \
 
       - name: Get user avatar
