@@ -37,19 +37,6 @@ def find_build_docker_scripts(dir: Path) -> Path | None:
 
     :param dir: The directory to search in. (Ideally, this is an assignment folder)
     """
-    print("Searching for build docker scripts...\n")
-
-    if os.path.exists(dir):
-        print(f"✅ Path exists: {dir}")
-        if os.path.isdir(dir):
-            print("📁 It's a directory. Contents:")
-            for item in os.listdir(dir):
-                print(f" - {item}")
-        else:
-            print("📄 It's a file.")
-    else:
-        print(f"❌ Path does not exist: {dir}")
-
     for file in dir.iterdir():
         if file.is_file() and file.name.startswith('build') and file.name.endswith('docker.sh'):
             return file.absolute()
