@@ -31,10 +31,6 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: List contents
-        run: ls -R ${{ github.workspace }}
-
-
       - name: Get changed files
         run: |
           files=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }})
@@ -55,6 +51,7 @@ jobs:
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/repo \
+            -v /var/run/docker.sock:/var/run/docker.sock \ 
             -w /repo \
             byucscourseops/build_dockers:latest \
             python /scripts/build_dockers.py \

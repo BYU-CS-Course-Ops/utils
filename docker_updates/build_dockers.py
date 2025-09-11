@@ -120,6 +120,7 @@ def run_docker_scripts(docker_scripts: set[Path], result):
             result.add_updated_image(docker_image)
         else:
             result.add_failed_image(docker_image)
+            print(stderr)
 
 
 def main(files: str, output_file: str, root_dir: str):
