@@ -73,14 +73,9 @@ jobs:
 
       - name: Send Discord Notification
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/repo \
-            -w /repo \
-            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
-            byucscourseops/send_course_notification:latest \
-            python /scripts/send_course_notification.py \
+          python utils/course_updates/send_course_notification.py \
               --type "docker" \
-              --payload "/repo/.github/logs/docker_output.json" \
+              --payload "${{ github.workspace }}/.github/logs/docker_output.json" \
               --course-id "${{ inputs.course_id }}" \
               --author "${{ github.actor }}" \
               --author-icon "$AVATAR_URL" \
