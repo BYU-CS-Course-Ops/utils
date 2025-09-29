@@ -87,9 +87,9 @@ jobs:
           pip install discord-webhook
 
       - name: Send notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
         run: |
-          DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} 
-          
           python utils/course_updates/send_course_notification.py \
               --type "canvas" \
               --payload "${{ github.workspace }}/.github/logs/mdxcanvas_output.json" \
