@@ -82,6 +82,10 @@ jobs:
           AVATAR_URL=$(curl -s https://api.github.com/users/${{ github.actor }} | jq -r '.avatar_url')
           echo "AVATAR_URL=$AVATAR_URL" >> $GITHUB_ENV
 
+      - name: Install discord_webhook
+        run: |
+          pip install discord-webhook
+
       - name: Send notification to Discord
         run: |
           python utils/course_updates/send_course_notification.py \
