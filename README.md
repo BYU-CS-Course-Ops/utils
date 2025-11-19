@@ -7,9 +7,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [merged]
 
 jobs:
   docker_automation:
@@ -32,9 +29,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [merged]
 
 jobs:
   update-canvas:
@@ -45,7 +39,6 @@ jobs:
       global_args_path: "_canvas-material/global_args.json"
       canvas_css_path: "_canvas-material/canvas.css"  # Optional
       template_path: "_canvas-material/course.canvas.md.xml.jinja"
-      output_path: ".github/logs/mdxcanvas_output.json"
     secrets:
       discord_role: ${{ secrets.CICD_NOTIFY_DISCORD_ROLE }}
       canvas_api_token: ${{ secrets.CANVAS_API_TOKEN }}
@@ -79,9 +72,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [merged]
 
 jobs:
   mdxcanvas_publish:
