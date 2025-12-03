@@ -63,33 +63,24 @@ jobs:
         id: run_build_dockers
         continue-on-error: true
         run: |
+          STDOUT_LOG="${{ github.workspace }}/.github/logs/docker_stdout.log"
+          STDERR_LOG="${{ github.workspace }}/.github/logs/docker_stderr.log"
+
           python utils/docker_updates/build_dockers.py \
               --files "${{ env.FILES }}" \
               --output-file "${{ github.workspace }}/.github/logs/docker_output.json" \
-              --root-dir "${{ github.workspace }}"
+              --root-dir "${{ github.workspace }}" \
+              > "$STDOUT_LOG" 2> "$STDERR_LOG"
 
-      - name: Create fallback output on failure
-        if: steps.run_build_dockers.outcome == 'failure'
+      - name: Create fallback output if needed
+        if: always()
         run: |
-          OUTPUT_FILE="${{ github.workspace }}/.github/logs/docker_output.json"
-
-          # Check if output file is missing or invalid
-          FILE_MISSING=false
-          INVALID_STRUCTURE=false
-
-          if [ ! -s "$OUTPUT_FILE" ]; then
-            FILE_MISSING=true
-          elif ! jq -e '.' "$OUTPUT_FILE" > /dev/null 2>&1; then
-            INVALID_STRUCTURE=true
-          fi
-
-          # Create fallback JSON if needed
-          if [ "$FILE_MISSING" = true ] || [ "$INVALID_STRUCTURE" = true ]; then
-            ACTION_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            echo "{
-              \"error\": \"Docker build failed to execute. Check the action logs: $ACTION_URL\"
-            }" > "$OUTPUT_FILE"
-          fi
+          python utils/course_updates/create_fallback.py \
+              --output-type Docker \
+              --output-path "${{ github.workspace }}/.github/logs/docker_output.json" \
+              --stdout-log "${{ github.workspace }}/.github/logs/docker_stdout.log" \
+              --stderr-log "${{ github.workspace }}/.github/logs/docker_stderr.log" \
+              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - name: Get user avatar
         run: |
