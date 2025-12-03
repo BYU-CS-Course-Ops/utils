@@ -41,6 +41,7 @@ jobs:
     uses: BYU-CS-Course-Ops/utils/.github/workflows/mdxcanvas_automation.yaml@main
     with:
       course_id: "235"
+      mdxcanvas_version: "0.3.0" # Optional, defaults to latest
       course_info_path: "_canvas-material/course-info/cs235_sp2025.json"
       global_args_path: "_canvas-material/global_args.json"
       canvas_css_path: "_canvas-material/canvas.css"  # Optional
