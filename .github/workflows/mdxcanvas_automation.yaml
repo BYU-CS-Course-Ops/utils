@@ -19,9 +19,6 @@ on:
       template_path:
         required: true
         type: string
-      output_path:
-        required: true
-        type: string
       canvas_css_path:
         required: false
         type: string
@@ -67,24 +64,40 @@ jobs:
       - name: Ensure logs directory exists
         run: mkdir -p ${{ github.workspace }}/.github/logs
 
+      - name: Output path
+        run: echo "OUTPUT_PATH=${{ github.workspace }}/.github/logs/mdxcanvas_output.json" >> $GITHUB_ENV
+
       - name: Run MDXCanvas
         id: run_mdxcanvas
         continue-on-error: true
         run: |
           export CANVAS_API_TOKEN=${{ secrets.canvas_api_token }}
-      
+
+          STDOUT_LOG="${{ github.workspace }}/.github/logs/mdxcanvas_stdout.log"
+          STDERR_LOG="${{ github.workspace }}/.github/logs/mdxcanvas_stderr.log"
+
           CMD="mdxcanvas --course-info ${{ github.workspace }}/${{ inputs.course_info_path }} \
                          --global-args ${{ github.workspace }}/${{ inputs.global_args_path }}"
-      
+
           if [ -n "${{ inputs.canvas_css_path }}" ]; then
             CMD="$CMD --css ${{ github.workspace }}/${{ inputs.canvas_css_path }}"
           fi
-      
-          CMD="$CMD --output-file ${{ github.workspace }}/${{ inputs.output_path }} \
+
+          CMD="$CMD --output-file ${{ env.OUTPUT_PATH }} \
                      ${{ github.workspace }}/${{ inputs.template_path }}"
-      
+
           echo "Running: \$CMD"
-          eval $CMD
+          eval $CMD > "$STDOUT_LOG" 2> "$STDERR_LOG"
+
+      - name: Create fallback output if needed
+        if: always()
+        run: |
+          python utils/course_updates/create_fallback.py \
+              --output-type MDXCanvas \
+              --output-path "${{ env.OUTPUT_PATH }}" \
+              --stdout-log "${{ github.workspace }}/.github/logs/mdxcanvas_stdout.log" \
+              --stderr-log "${{ github.workspace }}/.github/logs/mdxcanvas_stderr.log" \
+              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - name: Get User Avatar URL
         run: |
@@ -101,7 +114,7 @@ jobs:
         run: |
           python utils/course_updates/send_course_notification.py \
               --type "canvas" \
-              --payload "${{ github.workspace }}/.github/logs/mdxcanvas_output.json" \
+              --payload "${{ env.OUTPUT_PATH }}" \
               --course-id "${{ inputs.course_id }}" \
               --author "${{ github.actor }}" \
               --author-icon "$AVATAR_URL" \

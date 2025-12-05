@@ -60,11 +60,27 @@ jobs:
         run: mkdir -p .github/logs
 
       - name: Run build_dockers.py
+        id: run_build_dockers
+        continue-on-error: true
         run: |
+          STDOUT_LOG="${{ github.workspace }}/.github/logs/docker_stdout.log"
+          STDERR_LOG="${{ github.workspace }}/.github/logs/docker_stderr.log"
+
           python utils/docker_updates/build_dockers.py \
               --files "${{ env.FILES }}" \
               --output-file "${{ github.workspace }}/.github/logs/docker_output.json" \
-              --root-dir "${{ github.workspace }}"
+              --root-dir "${{ github.workspace }}" \
+              > "$STDOUT_LOG" 2> "$STDERR_LOG"
+
+      - name: Create fallback output if needed
+        if: always()
+        run: |
+          python utils/course_updates/create_fallback.py \
+              --output-type Docker \
+              --output-path "${{ github.workspace }}/.github/logs/docker_output.json" \
+              --stdout-log "${{ github.workspace }}/.github/logs/docker_stdout.log" \
+              --stderr-log "${{ github.workspace }}/.github/logs/docker_stderr.log" \
+              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - name: Get user avatar
         run: |
