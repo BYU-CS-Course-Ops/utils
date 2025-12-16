@@ -7,9 +7,8 @@ on:
         required: true
         type: string
       mdxcanvas_version:
-        required: false
+        required: true
         type: string
-        default: "latest"
       course_info_path:
         required: true
         type: string
@@ -55,11 +54,7 @@ jobs:
 
       - name: Install MDXCanvas
         run: |
-          if [ "${{ inputs.mdxcanvas_version }}" == "latest" ]; then
-            pip install mdxcanvas
-          else
             pip install mdxcanvas==${{ inputs.mdxcanvas_version }}
-          fi
 
       - name: Ensure logs directory exists
         run: mkdir -p ${{ github.workspace }}/.github/logs
