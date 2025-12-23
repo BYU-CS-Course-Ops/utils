@@ -16,6 +16,31 @@ def space(inline=False) -> Field:
 
 
 def generate_field(name: str, value: str, inline: bool = False) -> list[Field]:
+    # Check if this is a code block
+    if value.startswith('```') and value.endswith('```'):
+        # Extract content from code block
+        lines = value.split('\n', 1)
+        if len(lines) > 1:
+            # Has content after opening ```
+            rest = lines[1].rsplit('\n```', 1)[0]  # Remove closing ```
+
+            if len(rest) > 1000:  # Leave room for ``` markers
+                # Split content and wrap each chunk in code block
+                chunks = []
+                chunk_size = 1000
+                for i in range(0, len(rest), chunk_size):
+                    chunk = rest[i:i + chunk_size]
+                    chunks.append(f"```\n{chunk}\n```")
+
+                return [
+                    Field(
+                        name=name if i == 0 else f"{name} (continued)",
+                        value=chunk_value,
+                        inline=inline
+                    ) for i, chunk_value in enumerate(chunks)
+                ]
+
+    # Original logic for non-code-block values
     if len(value) > 1024:
         chunks = [value[i:i + 1024] for i in range(0, len(value), 1024)]
         return [
@@ -29,49 +54,21 @@ def generate_field(name: str, value: str, inline: bool = False) -> list[Field]:
         return [Field(name=name, value=value, inline=inline)]
 
 
-def truncate_error_message(error: str, action_url: str, max_length: int = 1800) -> str:
+def truncate_error_message(error: str, action_url: str) -> str:
     """
-    Format error for Discord. Uses code blocks for long/multi-line errors only.
+    Wrap error in code block. Shows only the last 15 lines to capture the final stack frames
+    and exception message, which are the most relevant for debugging.
     """
-    # Check if error is short and simple (single line)
-    is_short = len(error) <= 200 and '\n' not in error.strip()
-
-    if is_short:
-        # Short error: just return as-is (no code block)
-        return error
-
-    # Long error: use code block formatting
-    if len(error) <= max_length:
-        # Wrap in code block
-        return f"```text\n{error}\n```"
-
-    # Extract last exception (most important)
     lines = error.split('\n')
 
-    # Find the last "Error:" or "Exception:" line
-    last_exception_idx = -1
-    for i in range(len(lines) - 1, -1, -1):
-        if 'Error' in lines[i] or 'Exception' in lines[i] or 'Traceback' in lines[i]:
-            last_exception_idx = i
-            break
+    # If 15 lines or fewer, show the full error
+    if len(lines) <= 15:
+        return f"```\n{error}\n```"
 
-    # Show last 20-25 lines (usually captures the final exception)
-    if last_exception_idx > 0:
-        start_idx = max(0, len(lines) - 25)
-        truncated_lines = lines[start_idx:]
-        truncated = '\n'.join(truncated_lines)
-    else:
-        # Fallback: just take last N chars
-        truncated = error[-max_length:]
-
-    # Ensure it fits
-    if len(truncated) > max_length - 200:  # Leave room for message
-        truncated = truncated[-(max_length - 200):]
-
-    # Format with code block and link
-    result = f"```text\n{truncated}\n```\n\n[View full error in GitHub Action logs]({action_url})"
-
-    return result
+    # Otherwise, show last 15 lines with truncation indicator
+    last_lines = '\n'.join(lines[-15:])
+    truncated = f"... (truncated) ...\n\n{last_lines}"
+    return f"```\n{truncated}\n```"
 
 
 def send_parsed_discord_embed(webhook_url: str, notification: dict, requires_review:bool, cicd_id: int = None):
