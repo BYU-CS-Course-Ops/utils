@@ -83,6 +83,9 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
         run: |
+          echo "=== MDXCanvas Log ==="
+            cat "$LOGS_DIR/mdxcanvas.log"
+          
           # Create fallback if needed
           python utils/course_updates/create_fallback.py \
               --output-type MDXCanvas \
@@ -91,7 +94,7 @@ jobs:
               --stderr-log "$LOGS_DIR/mdxcanvas.log" \
               --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          echo "=== MDXCanvas Output ==="
+          echo "=== Updated Output ==="
           cat "$OUTPUT_PATH"
 
           # Get avatar and send notification
