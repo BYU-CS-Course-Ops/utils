@@ -54,21 +54,48 @@ def generate_field(name: str, value: str, inline: bool = False) -> list[Field]:
         return [Field(name=name, value=value, inline=inline)]
 
 
-def truncate_error_message(error: str, action_url: str) -> str:
+def truncate_error_message(error: str, max_chars: int = 900) -> str:
     """
-    Wrap error in code block. Shows only the last 15 lines to capture the final stack frames
-    and exception message, which are the most relevant for debugging.
+    Extracts the most relevant error information for Discord:
+    - If a traceback exists, keep only the last traceback
+    - Trim to the final few stack frames
+    - Always include the exception message
     """
-    lines = error.split('\n')
 
-    # If 15 lines or fewer, show the full error
-    if len(lines) <= 15:
-        return f"```\n{error}\n```"
+    if not error:
+        return f"```\nNo error output available.\n```"
 
-    # Otherwise, show last 15 lines with truncation indicator
-    last_lines = '\n'.join(lines[-15:])
-    truncated = f"... (truncated) ...\n\n{last_lines}"
-    return f"```\n{truncated}\n```"
+    lines = error.splitlines()
+
+    # Find all traceback starts
+    traceback_indices = [
+        i for i, line in enumerate(lines)
+        if line.strip().startswith("Traceback (most recent call last):")
+    ]
+
+    if traceback_indices:
+        # Use only the LAST traceback
+        tb_start = traceback_indices[-1]
+        relevant = lines[tb_start:]
+
+        # Keep only the last N stack frames + exception
+        # Stack frames usually come in pairs: File + code line
+        MAX_LINES = 12
+        if len(relevant) > MAX_LINES:
+            relevant = ["... (traceback truncated) ..."] + relevant[-MAX_LINES:]
+
+        message = "\n".join(relevant)
+    else:
+        # No traceback → take last meaningful chunk
+        message = "\n".join(lines[-15:])
+
+    # Hard cap for Discord
+    if len(message) > max_chars:
+        message = message[-max_chars:]
+        message = "... (truncated) ...\n" + message
+
+    return f"```\n{message}\n```"
+
 
 
 def send_parsed_discord_embed(webhook_url: str, notification: dict, requires_review:bool, cicd_id: int = None):

@@ -49,7 +49,7 @@ def docker_format(data, course_id, author, author_icon, branch, action_url):
 
     error = data["error"] if data['error'] else '*No errors*'
     if error != '*No errors*':
-        error = truncate_error_message(error, action_url)
+        error = truncate_error_message(error)
 
     return {
         "username": "Gradescope Notifications",
