@@ -29,6 +29,28 @@ def generate_field(name: str, value: str, inline: bool = False) -> list[Field]:
         return [Field(name=name, value=value, inline=inline)]
 
 
+def truncate_error_message(error: str, action_url: str, max_length: int = 2000) -> str:
+    """
+    Truncate error messages to fit Discord embed limits while preserving useful debugging info.
+    Keeps first part (error context) and last part (stack trace).
+    """
+    if len(error) <= max_length:
+        return error
+
+    # Reserve space for truncation indicator
+    indicator = f"\n\n...\n\n(Truncated - see full error in [GitHub Action logs]({action_url}))\n\n"
+    available = max_length - len(indicator)
+
+    # Split: keep 40% at start (error context), 60% at end (stack trace)
+    first_chars = int(available * 0.4)
+    last_chars = int(available * 0.6)
+
+    first_part = error[:first_chars].rstrip()
+    last_part = error[-last_chars:].lstrip()
+
+    return first_part + indicator + last_part
+
+
 def send_parsed_discord_embed(webhook_url: str, notification: dict, requires_review:bool, cicd_id: int = None):
     webhook = DiscordWebhook(
         url=webhook_url,
@@ -70,6 +92,20 @@ def send_parsed_discord_embed(webhook_url: str, notification: dict, requires_rev
             )
 
         webhook.add_embed(embed)
+
+    # Calculate approximate embed size
+    total_size = 0
+    for embed_data in notification.get("embeds", []):
+        total_size += len(str(embed_data.get("title", "")))
+        total_size += len(str(embed_data.get("description", "")))
+        for field in embed_data.get("fields", []):
+            total_size += len(field.get("name", ""))
+            total_size += len(field.get("value", ""))
+
+    if total_size > 4800:  # 80% of 6000 limit
+        print(f"⚠️  Warning: Embed size ({total_size} chars) approaching Discord's 6000 char limit")
+    if total_size > 6000:
+        print(f"❌ Error: Embed size ({total_size} chars) exceeds Discord's 6000 char limit")
 
     response = webhook.execute()
     if response.status_code >= 400:

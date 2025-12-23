@@ -1,5 +1,5 @@
 from datetime import datetime
-from send_course_notification import Field, space, generate_field
+from send_course_notification import Field, space, generate_field, truncate_error_message
 
 '''
 Example payload (15 Apr 2025 - docker_notification.py):
@@ -48,6 +48,8 @@ def docker_format(data, course_id, author, author_icon, branch, action_url):
         else '*No items to review*'
 
     error = data["error"] if data['error'] else '*No errors*'
+    if error != '*No errors*':
+        error = truncate_error_message(error, action_url)
 
     return {
         "username": "Gradescope Notifications",
