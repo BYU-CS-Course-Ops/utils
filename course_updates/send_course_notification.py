@@ -12,7 +12,7 @@ class Field(TypedDict):
 
 
 def space(inline=False) -> Field:
-    return Field(name="", value="\u200b", inline=inline)
+    return Field(name="\u200b", value="\u200b", inline=inline)
 
 
 def generate_field(name: str, value: str, inline: bool = False) -> list[Field]:
@@ -29,26 +29,42 @@ def generate_field(name: str, value: str, inline: bool = False) -> list[Field]:
         return [Field(name=name, value=value, inline=inline)]
 
 
-def truncate_error_message(error: str, action_url: str, max_length: int = 2000) -> str:
+def truncate_error_message(error: str, action_url: str, max_length: int = 1800) -> str:
     """
-    Truncate error messages to fit Discord embed limits while preserving useful debugging info.
-    Keeps first part (error context) and last part (stack trace).
+    Truncate error for Discord with code block formatting.
+    Shows the final exception and key context.
     """
     if len(error) <= max_length:
-        return error
+        # Wrap in code block
+        return f"```text\n{error}\n```"
 
-    # Reserve space for truncation indicator
-    indicator = f"\n\n...\n\n(Truncated - see full error in [GitHub Action logs]({action_url}))\n\n"
-    available = max_length - len(indicator)
+    # Extract last exception (most important)
+    lines = error.split('\n')
 
-    # Split: keep 40% at start (error context), 60% at end (stack trace)
-    first_chars = int(available * 0.4)
-    last_chars = int(available * 0.6)
+    # Find the last "Error:" or "Exception:" line
+    last_exception_idx = -1
+    for i in range(len(lines) - 1, -1, -1):
+        if 'Error' in lines[i] or 'Exception' in lines[i] or 'Traceback' in lines[i]:
+            last_exception_idx = i
+            break
 
-    first_part = error[:first_chars].rstrip()
-    last_part = error[-last_chars:].lstrip()
+    # Show last 20-25 lines (usually captures the final exception)
+    if last_exception_idx > 0:
+        start_idx = max(0, len(lines) - 25)
+        truncated_lines = lines[start_idx:]
+        truncated = '\n'.join(truncated_lines)
+    else:
+        # Fallback: just take last N chars
+        truncated = error[-max_length:]
 
-    return first_part + indicator + last_part
+    # Ensure it fits
+    if len(truncated) > max_length - 200:  # Leave room for message
+        truncated = truncated[-(max_length - 200):]
+
+    # Format with code block and link
+    result = f"```text\n{truncated}\n```\n\n[View full error in GitHub Action logs]({action_url})"
+
+    return result
 
 
 def send_parsed_discord_embed(webhook_url: str, notification: dict, requires_review:bool, cicd_id: int = None):
@@ -85,9 +101,18 @@ def send_parsed_discord_embed(webhook_url: str, notification: dict, requires_rev
 
         # Fields
         for field in embed_data.get("fields", []):
+            field_name = field.get("name", "\u200b")
+            field_value = field.get("value", "\u200b")
+
+            # Ensure neither name nor value is empty (Discord requirement)
+            if not field_name or not field_name.strip():
+                field_name = "\u200b"
+            if not field_value or not field_value.strip():
+                field_value = "\u200b"
+
             embed.add_embed_field(
-                name=field.get("name", "\u200b"),
-                value=field.get("value", "\u200b"),
+                name=field_name,
+                value=field_value,
                 inline=field.get("inline", False)
             )
 
