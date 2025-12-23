@@ -76,22 +76,26 @@ jobs:
 
           CMD="$CMD ${{ github.workspace }}/${{ inputs.template_path }}"
 
-          echo "Running: $CMD"
-          eval $CMD 2>&1 | tee "$LOGS_DIR/mdxcanvas.log"
+          eval "$CMD" \
+            > "$LOGS_DIR/mdxcanvas.stdout.log" \
+            2> "$LOGS_DIR/mdxcanvas.stderr.log"
 
       - name: Process results and notify
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
         run: |
-          echo "=== MDXCanvas Log ==="
-            cat "$LOGS_DIR/mdxcanvas.log"
+          echo "=== MDXCanvas STDOUT ==="
+            cat "$LOGS_DIR/mdxcanvas.stdout.log"
+          
+          echo "=== MDXCanvas STDERR ==="
+            cat "$LOGS_DIR/mdxcanvas.stderr.log"
           
           # Create fallback if needed
           python utils/course_updates/create_fallback.py \
               --output-type MDXCanvas \
               --output-path "$OUTPUT_PATH" \
-              --stdout-log "$LOGS_DIR/mdxcanvas.log" \
-              --stderr-log "$LOGS_DIR/mdxcanvas.log" \
+              --stdout-log "$LOGS_DIR/mdxcanvas.stdout.log" \
+              --stderr-log "$LOGS_DIR/mdxcanvas.stderr.log" \
               --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           echo "=== Updated Output ==="
