@@ -31,9 +31,16 @@ def generate_field(name: str, value: str, inline: bool = False) -> list[Field]:
 
 def truncate_error_message(error: str, action_url: str, max_length: int = 1800) -> str:
     """
-    Truncate error for Discord with code block formatting.
-    Shows the final exception and key context.
+    Format error for Discord. Uses code blocks for long/multi-line errors only.
     """
+    # Check if error is short and simple (single line)
+    is_short = len(error) <= 200 and '\n' not in error.strip()
+
+    if is_short:
+        # Short error: just return as-is (no code block)
+        return error
+
+    # Long error: use code block formatting
     if len(error) <= max_length:
         # Wrap in code block
         return f"```text\n{error}\n```"
