@@ -4,7 +4,6 @@ from datetime import datetime
 from argparse import ArgumentParser
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-
 BEAN_LAB_LOGO = None
 
 
@@ -41,6 +40,15 @@ def main(ntype, author, author_icon, action_url, success=None, version=None, cic
             "color": 1301590,
             "footer_text": "MarkdownData GitHub Action",
             "footer_icon_url": "https://tinyurl.com/4ky2afzx"
+        },
+        "byu_pytest_utils": {
+            "username": "BYU Pytest Utils Notifications",
+            "title": "BYU Pytest Utils Update",
+            "success_description": lambda x: f"Updated to version **`{x}`**",
+            "failure_description": "An **error occurred** while updating BYU Pytest Utils.",
+            "color": 3447003,
+            "footer_text": "BYU Pytest Utils GitHub Action",
+            "footer_icon_url": "https://tinyurl.com/4dyna5du"
         }
     }
 
@@ -99,9 +107,11 @@ def main(ntype, author, author_icon, action_url, success=None, version=None, cic
     else:
         print("✅ Sent message successfully.")
 
+
 if __name__ == "__main__":
     parser = ArgumentParser(description="Send Canvas or Docker notifications to Discord.")
-    parser.add_argument("--type", required=True, choices=["mdxcanvas", "markdowndata"], help="Type of notification")
+    parser.add_argument("--type", required=True, choices=["mdxcanvas", "markdowndata", "byu_pytest_utils"],
+                        help="Type of notification")
     parser.add_argument("--author", required=True, help="Name of the author")
     parser.add_argument("--author-icon", required=True, help="URL of the author's icon")
     parser.add_argument("--action-url", required=True, help="URL to the GHA")
