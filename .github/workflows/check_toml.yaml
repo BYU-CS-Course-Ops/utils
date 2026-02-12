@@ -10,18 +10,19 @@ on:
       uped_toml:
         description: "Whether pyproject.toml version differs from PyPI"
         value: ${{ jobs.check.outputs.uped_toml }}
+      version:
+        description: "The version from pyproject.toml"
+        value: ${{ jobs.check.outputs.version }}
 
 jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
       uped_toml: ${{ steps.extract_update.outputs.uped_toml }}
+      version: ${{ steps.get_build_version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: pip install requests
 
       - name: Get version from PyPI
         id: get_pypi_version
@@ -29,16 +30,25 @@ jobs:
           VERSION=$(curl -s https://pypi.org/pypi/${{ inputs.pypi_package }}/json | jq -r .info.version)
           echo "pypi_version=$VERSION" >> $GITHUB_ENV
 
-      - name: Extract version from pyproject.toml
-        id: extract_version
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Poetry Install
+        run: poetry install
+
+      - name: Build PyPI package
+        run: poetry build
+
+      - name: Get version from poetry build
+        id: get_build_version
         run: |
-          VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
+          VERSION=$(poetry version -s)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Check for version update
         id: extract_update
         run: |
-          if [ "${{ steps.extract_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
+          if [ "${{ steps.get_build_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
             echo "Version matches PyPI — no update"
             echo "uped_toml=false" >> $GITHUB_OUTPUT
           else

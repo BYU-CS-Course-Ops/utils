@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       success: ${{ steps.publish.outputs.success }}
-      version: ${{ steps.extract_version.outputs.version }}
+      version: ${{ needs.check-toml-version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -36,14 +36,11 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
 
+      - name: Poetry Install
+        run: poetry install
+
       - name: Build PyPI package
         run: poetry build
-
-      - name: Extract version from pyproject.toml
-        id: extract_version
-        run: |
-          VERSION=$(grep -o 'version = ".*"' pyproject.toml | cut -d'"' -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Publish PyPI package
         id: publish
@@ -52,16 +49,16 @@ jobs:
           POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
         run: |
           if [ "${{ needs.check-toml-version.outputs.uped_toml }}" != "true" ]; then
-            echo "❌ pyproject.toml version was not updated — skipping publish"
+            echo "pyproject.toml version was not updated — skipping publish"
             echo "success=false" >> $GITHUB_OUTPUT
             exit 1
           fi
 
           if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
-            echo "✅ Publish succeeded"
+            echo "Publish succeeded"
             echo "success=true" >> $GITHUB_OUTPUT
           else
-            echo "❌ Publish failed"
+            echo "Publish failed"
             echo "success=false" >> $GITHUB_OUTPUT
             exit 1
           fi
