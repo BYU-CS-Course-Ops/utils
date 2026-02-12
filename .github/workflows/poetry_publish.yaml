@@ -36,6 +36,9 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
 
+      - name: Install Poetry Version Plugin
+        run: poetry self add poetry-version-from-file
+
       - name: Poetry Install
         run: poetry install
 

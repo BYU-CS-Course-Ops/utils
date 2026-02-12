@@ -33,6 +33,9 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
 
+      - name: Install Poetry Version Plugin
+        run: poetry self add poetry-version-from-file
+
       - name: Poetry Install
         run: poetry install
 
@@ -48,10 +51,5 @@ jobs:
       - name: Check for version update
         id: extract_update
         run: |
-          if [ "${{ steps.get_build_version.outputs.version }}" = "${{ env.pypi_version }}" ]; then
-            echo "Version matches PyPI — no update"
-            echo "uped_toml=false" >> $GITHUB_OUTPUT
-          else
-            echo "Version bumped — safe to publish"
-            echo "uped_toml=true" >> $GITHUB_OUTPUT
-          fi
+          python3 .github/scripts/check_version.py "${{ steps.get_build_version.outputs.version }}" "${{ env.pypi_version }}"
+          echo "uped_toml=true" >> $GITHUB_OUTPUT
