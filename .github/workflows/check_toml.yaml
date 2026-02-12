@@ -30,11 +30,8 @@ jobs:
           VERSION=$(curl -s https://pypi.org/pypi/${{ inputs.pypi_package }}/json | jq -r .info.version)
           echo "pypi_version=$VERSION" >> $GITHUB_ENV
 
-      - name: Install Poetry
-        run: pip install "poetry<2"
-
-      - name: Install Poetry Version Plugin
-        run: poetry self add poetry-version-from-file
+      - name: Install Poetry and Version Plugin
+        run: pip install "poetry<2" poetry-version-from-file
 
       - name: Poetry Install
         run: poetry install

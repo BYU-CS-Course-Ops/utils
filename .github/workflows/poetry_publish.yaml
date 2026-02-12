@@ -33,11 +33,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Poetry
-        run: pip install "poetry<2"
-
-      - name: Install Poetry Version Plugin
-        run: poetry self add poetry-version-from-file
+      - name: Install Poetry and Version Plugin
+        run: pip install "poetry<2" poetry-version-from-file
 
       - name: Poetry Install
         run: poetry install
