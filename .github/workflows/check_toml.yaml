@@ -31,7 +31,7 @@ jobs:
           echo "pypi_version=$VERSION" >> $GITHUB_ENV
 
       - name: Install Poetry
-        run: pip install poetry
+        run: pip install "poetry<2"
 
       - name: Install Poetry Version Plugin
         run: poetry self add poetry-version-from-file
