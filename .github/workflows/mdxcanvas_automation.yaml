@@ -91,7 +91,7 @@ jobs:
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
 
       - name: Send course notification
-        uses: utils/.github/actions/send-course-notification
+        uses: ./utils/.github/actions/send-course-notification
         with:
           notification-type: canvas
           output-type: MDXCanvas
