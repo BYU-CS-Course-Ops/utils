@@ -43,16 +43,21 @@ jobs:
       OUTPUT_PATH: ${{ github.workspace }}/.github/logs/mdxcanvas_output.json
 
     steps:
-      - name: Checkout repos
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Setup notifications
-        uses: ./.github/actions/setup-notifications
+      - name: Checkout utils repo
+        uses: actions/checkout@v4
         with:
-          extra-packages: mdxcanvas==${{ inputs.mdxcanvas_version }}
+          repository: BYU-CS-Course-Ops/utils
+          path: utils
+
+      - name: Install notification dependencies
+        shell: bash
+        run: pip install discord-webhook ${{ inputs.extra-packages }}
 
       - name: Create logs directory
         run: mkdir -p "$LOGS_DIR"
@@ -86,7 +91,7 @@ jobs:
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
 
       - name: Send course notification
-        uses: ./.github/actions/send-course-notification
+        uses: utils/.github/actions/send-course-notification
         with:
           notification-type: canvas
           output-type: MDXCanvas

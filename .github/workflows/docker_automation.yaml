@@ -31,8 +31,15 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Setup notifications
-        uses: ./.github/actions/setup-notifications
+      - name: Checkout utils repo
+        uses: actions/checkout@v4
+        with:
+          repository: BYU-CS-Course-Ops/utils
+          path: utils
+
+      - name: Install notification dependencies
+        shell: bash
+        run: pip install discord-webhook ${{ inputs.extra-packages }}
 
       - name: Get changed files
         run: |

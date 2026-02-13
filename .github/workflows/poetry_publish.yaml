@@ -68,11 +68,18 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Setup notifications
-        uses: ./.github/actions/setup-notifications
+      - name: Checkout utils repo
+        uses: actions/checkout@v4
+        with:
+          repository: BYU-CS-Course-Ops/utils
+          path: utils
+
+      - name: Install notification dependencies
+        shell: bash
+        run: pip install discord-webhook ${{ inputs.extra-packages }}
 
       - name: Send PyPI notification
-        uses: ./.github/actions/send-pypi-notification
+        uses: utils/.github/actions/send-pypi-notification
         with:
           pypi-package: ${{ inputs.pypi_package }}
           success: ${{ needs.poetry-publish.outputs.success }}
