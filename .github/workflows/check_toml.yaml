@@ -27,6 +27,12 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Checkout utils repo
+        uses: actions/checkout@v4
+        with:
+          repository: BYU-CS-Course-Ops/utils
+          path: utils
+
       - name: Get version from PyPI
         id: get_pypi_version
         run: |
@@ -51,5 +57,5 @@ jobs:
       - name: Check for version update
         id: extract_update
         run: |
-          python3 ./.github/scripts/check_version.py "${{ steps.get_build_version.outputs.version }}" "${{ env.pypi_version }}"
+          python3 utils/.github/scripts/check_version.py "${{ steps.get_build_version.outputs.version }}" "${{ env.pypi_version }}"
           echo "uped_toml=true" >> $GITHUB_OUTPUT

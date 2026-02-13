@@ -31,6 +31,12 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Checkout utils repo
+        uses: actions/checkout@v4
+        with:
+          repository: BYU-CS-Course-Ops/utils
+          path: utils
+
       - name: Install notification dependencies
         shell: bash
         run: pip install discord-webhook ${{ inputs.extra-packages }}
@@ -64,7 +70,7 @@ jobs:
           STDOUT_LOG="${{ github.workspace }}/.github/logs/docker_stdout.log"
           STDERR_LOG="${{ github.workspace }}/.github/logs/docker_stderr.log"
 
-          python ./docker_updates/build_dockers.py \
+          python utils/docker_updates/build_dockers.py \
               --files "${{ env.FILES }}" \
               --output-file "${{ github.workspace }}/.github/logs/docker_output.json" \
               --root-dir "${{ github.workspace }}" \
