@@ -1,0 +1,21 @@
+name: Setup Notifications
+description: Checkout utils repo and install discord-webhook plus any extra packages
+
+inputs:
+  extra-packages:
+    description: "Additional pip packages to install (e.g. mdxcanvas==0.3.27)"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout utils repo
+      uses: actions/checkout@v4
+      with:
+        repository: BYU-CS-Course-Ops/utils
+        path: utils
+
+    - name: Install notification dependencies
+      shell: bash
+      run: pip install discord-webhook ${{ inputs.extra-packages }}

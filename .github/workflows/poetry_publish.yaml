@@ -31,7 +31,7 @@ jobs:
       version: ${{ needs.check-toml-version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Poetry and Version Plugin
         run: pip install "poetry<2" poetry-version-from-file
@@ -66,35 +66,17 @@ jobs:
   notify-discord:
     needs: [check-toml-version, poetry-publish]
     runs-on: ubuntu-latest
-    if: always()  # Notify on both success and failure
+    if: always()
     steps:
-      - name: Get User Avatar URL
-        id: avatar
-        run: |
-          AVATAR_URL=$(curl -s https://api.github.com/users/${{ github.actor }} | jq -r '.avatar_url')
-          echo "avatar_url=$AVATAR_URL" >> $GITHUB_ENV
+      - name: Setup notifications
+        uses: ./.github/actions/setup-notifications
 
-      - name: Send notification to Discord
-        run: |
-          CMD="python /scripts/send_update_notification.py \
-            --type ${{ inputs.pypi_package }} \
-            --author ${{ github.actor }} \
-            --author-icon ${{ env.avatar_url }} \
-            --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          if [ '${{ needs.poetry-publish.outputs.success }}' == 'true' ] && \
-             [ '${{ needs.check-toml-version.outputs.uped_toml }}' == 'true' ]; then
-            CMD="$CMD --success 1"
-          fi
-
-          CMD="$CMD --version ${{ needs.poetry-publish.outputs.version }} \
-              --cicd-id ${{ secrets.discord_role }}"
-
-          echo "$CMD"
-
-          docker run --rm \
-            -v ${{ github.workspace }}:/repo \
-            -w /repo \
-            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
-            byucscourseops/send_update_notification:latest \
-            sh -c "$CMD"
+      - name: Send PyPI notification
+        uses: ./.github/actions/send-pypi-notification
+        with:
+          pypi-package: ${{ inputs.pypi_package }}
+          success: ${{ needs.poetry-publish.outputs.success }}
+          toml-updated: ${{ needs.check-toml-version.outputs.uped_toml }}
+          version: ${{ needs.poetry-publish.outputs.version }}
+          discord-role: ${{ secrets.discord_role }}
+          discord-webhook-url: ${{ secrets.discord_webhook_url }}

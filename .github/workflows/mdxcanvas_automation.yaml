@@ -49,16 +49,13 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Checkout utils repo
-        uses: actions/checkout@v4
+      - name: Setup notifications
+        uses: ./.github/actions/setup-notifications
         with:
-          repository: BYU-CS-Course-Ops/utils
-          path: utils
+          extra-packages: mdxcanvas==${{ inputs.mdxcanvas_version }}
 
-      - name: Setup
-        run: |
-          mkdir -p "$LOGS_DIR"
-          pip install mdxcanvas==${{ inputs.mdxcanvas_version }} discord-webhook
+      - name: Create logs directory
+        run: mkdir -p "$LOGS_DIR"
 
       - name: Run MDXCanvas
         id: mdxcanvas
@@ -80,36 +77,22 @@ jobs:
             > "$LOGS_DIR/mdxcanvas.stdout.log" \
             2> "$LOGS_DIR/mdxcanvas.stderr.log"
 
-      - name: Process results and notify
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
+      - name: Print debug logs
         run: |
           echo "=== MDXCanvas STDOUT ==="
             cat "$LOGS_DIR/mdxcanvas.stdout.log"
-          
+
           echo "=== MDXCanvas STDERR ==="
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
-          
-          # Create fallback if needed
-          python utils/course_updates/create_fallback.py \
-              --output-type MDXCanvas \
-              --output-path "$OUTPUT_PATH" \
-              --stdout-log "$LOGS_DIR/mdxcanvas.stdout.log" \
-              --stderr-log "$LOGS_DIR/mdxcanvas.stderr.log" \
-              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          echo "=== Updated Output ==="
-          cat "$OUTPUT_PATH"
-
-          # Get avatar and send notification
-          AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url')
-
-          python utils/course_updates/send_course_notification.py \
-              --type "canvas" \
-              --payload "$OUTPUT_PATH" \
-              --course-id "${{ inputs.course_id }}" \
-              --author "${{ github.actor }}" \
-              --author-icon "$AVATAR_URL" \
-              --branch "${{ github.ref }}" \
-              --cicd-id "${{ secrets.discord_role }}" \
-              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Send course notification
+        uses: ./.github/actions/send-course-notification
+        with:
+          notification-type: canvas
+          output-type: MDXCanvas
+          payload-path: ${{ env.OUTPUT_PATH }}
+          stdout-log: ${{ env.LOGS_DIR }}/mdxcanvas.stdout.log
+          stderr-log: ${{ env.LOGS_DIR }}/mdxcanvas.stderr.log
+          course-id: ${{ inputs.course_id }}
+          discord-role: ${{ secrets.discord_role }}
+          discord-webhook-url: ${{ secrets.discord_webhook_url }}

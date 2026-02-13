@@ -1,0 +1,63 @@
+name: Send Course Notification
+description: Create fallback output if needed, get GitHub avatar, and send course notification to Discord
+
+inputs:
+  notification-type:
+    description: "Type of notification: 'canvas' or 'docker'"
+    required: true
+  output-type:
+    description: "Output type for fallback: 'MDXCanvas' or 'Docker'"
+    required: true
+  payload-path:
+    description: "Path to the output JSON file"
+    required: true
+  stdout-log:
+    description: "Path to stdout log file"
+    required: true
+  stderr-log:
+    description: "Path to stderr log file"
+    required: true
+  course-id:
+    description: "Course ID"
+    required: true
+  discord-role:
+    description: "Discord CI/CD role ID"
+    required: true
+  discord-webhook-url:
+    description: "Discord webhook URL"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create fallback output if needed
+      shell: bash
+      run: |
+        PYTHONPATH=utils python -m notifications.fallback \
+            --output-type "${{ inputs.output-type }}" \
+            --output-path "${{ inputs.payload-path }}" \
+            --stdout-log "${{ inputs.stdout-log }}" \
+            --stderr-log "${{ inputs.stderr-log }}" \
+            --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+    - name: Get user avatar
+      id: avatar
+      shell: bash
+      run: |
+        AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url')
+        echo "url=$AVATAR_URL" >> $GITHUB_OUTPUT
+
+    - name: Send course notification to Discord
+      shell: bash
+      env:
+        DISCORD_WEBHOOK_URL: ${{ inputs.discord-webhook-url }}
+      run: |
+        PYTHONPATH=utils python -m notifications.send_course \
+            --type "${{ inputs.notification-type }}" \
+            --payload "${{ inputs.payload-path }}" \
+            --course-id "${{ inputs.course-id }}" \
+            --author "${{ github.actor }}" \
+            --author-icon "${{ steps.avatar.outputs.url }}" \
+            --branch "${{ github.ref }}" \
+            --cicd-id "${{ inputs.discord-role }}" \
+            --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
