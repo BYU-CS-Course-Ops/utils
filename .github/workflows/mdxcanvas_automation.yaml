@@ -49,12 +49,6 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Checkout utils repo
-        uses: actions/checkout@v4
-        with:
-          repository: BYU-CS-Course-Ops/utils@canvas-notification-updates
-          path: utils
-
       - name: Install notification dependencies
         shell: bash
         run: pip install discord-webhook ${{ inputs.extra-packages }}
@@ -91,7 +85,7 @@ jobs:
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
 
       - name: Send course notification
-        uses: utils/.github/actions/send-course-notification
+        uses: ./.github/actions/send-course-notification
         with:
           notification-type: canvas
           output-type: MDXCanvas
