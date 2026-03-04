@@ -50,7 +50,7 @@ def generate_fields(name: str, value: str, inline: bool = False) -> list[Field]:
 
                 return [
                     Field(
-                        name=name if i == 0 else f"{name} (continued)",
+                        name=name if i == 0 else "…",
                         value=chunk_value,
                         inline=inline
                     ) for i, chunk_value in enumerate(chunks)
@@ -76,7 +76,7 @@ def generate_fields(name: str, value: str, inline: bool = False) -> list[Field]:
             chunks.append('\n'.join(current))
         return [
             Field(
-                name=name if i == 0 else f"{name} (continued)",
+                name=name if i == 0 else "…",
                 value=chunk,
                 inline=inline
             ) for i, chunk in enumerate(chunks)
