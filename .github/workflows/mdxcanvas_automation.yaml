@@ -56,6 +56,9 @@ jobs:
           ref: canvas-notification-updates
           path: utils
 
+      - name: Install MDXCanvas
+        run: pip install mdxcanvas==${{ inputs.mdxcanvas_version }}
+
       - name: Install notification dependencies
         shell: bash
         run: pip install discord-webhook ${{ inputs.extra-packages }}
