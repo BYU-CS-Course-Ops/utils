@@ -58,7 +58,22 @@ def generate_fields(name: str, value: str, inline: bool = False) -> list[Field]:
 
     # Original logic for non-code-block values
     if len(value) > 1024:
-        chunks = [value[i:i + 1024] for i in range(0, len(value), 1024)]
+        lines = value.split('\n')
+        chunks = []
+        current = []
+        current_len = 0
+        for line in lines:
+            # +1 for the newline we'll rejoin with
+            needed = len(line) + (1 if current else 0)
+            if current and current_len + needed > 1024:
+                chunks.append('\n'.join(current))
+                current = [line]
+                current_len = len(line)
+            else:
+                current.append(line)
+                current_len += needed
+        if current:
+            chunks.append('\n'.join(current))
         return [
             Field(
                 name=name if i == 0 else f"{name} (continued)",
