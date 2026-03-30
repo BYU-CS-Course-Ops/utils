@@ -114,10 +114,10 @@ def send_notification(webhook_url: str, notification: Notification):
         )
 
         if embed_data.author:
-            embed.set_author(
-                name=embed_data.author.name,
-                icon_url=embed_data.author.icon_url,
-            )
+            author_kwargs = {"name": embed_data.author.name}
+            if embed_data.author.icon_url:
+                author_kwargs["icon_url"] = embed_data.author.icon_url
+            embed.set_author(**author_kwargs)
 
         if embed_data.footer:
             embed.set_footer(

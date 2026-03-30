@@ -52,8 +52,8 @@ runs:
       id: avatar
       shell: bash
       run: |
-        AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url')
-        echo "url=$AVATAR_URL" >> $GITHUB_OUTPUT
+        AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url // empty')
+        echo "url=${AVATAR_URL:-}" >> $GITHUB_OUTPUT
 
     - name: Extract course metadata
       id: course-meta
