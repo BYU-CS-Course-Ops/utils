@@ -86,7 +86,7 @@ jobs:
 
       - name: Send course notification
         if: always()
-        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@canvas-notification-updates
+        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@claude/wonderful-lovelace
         with:
           notification-type: docker
           output-type: Docker

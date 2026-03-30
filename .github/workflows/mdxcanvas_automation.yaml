@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: BYU-CS-Course-Ops/utils
-          ref: canvas-notification-updates
+          ref: claude/wonderful-lovelace
           path: utils
 
       - name: Install MDXCanvas
@@ -95,7 +95,7 @@ jobs:
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
 
       - name: Send course notification
-        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@canvas-notification-updates
+        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@claude/wonderful-lovelace
         with:
           notification-type: canvas
           output-type: MDXCanvas
