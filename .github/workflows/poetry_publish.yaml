@@ -17,7 +17,6 @@ jobs:
     uses: BYU-CS-Course-Ops/utils/.github/workflows/check_toml.yaml@claude/wonderful-lovelace
     with:
       pypi_package: ${{ inputs.pypi_package }}
-    secrets: inherit
 
   poetry-publish:
     needs: check-toml-version
