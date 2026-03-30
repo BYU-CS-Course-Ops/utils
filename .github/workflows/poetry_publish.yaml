@@ -13,23 +13,35 @@ on:
         required: true
 
 jobs:
-  check-toml-version:
-    uses: BYU-CS-Course-Ops/utils/.github/workflows/check_toml.yaml@claude/wonderful-lovelace
-    with:
-      pypi_package: ${{ inputs.pypi_package }}
-
   poetry-publish:
-    needs: check-toml-version
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     outputs:
       success: ${{ steps.result.outputs.success }}
-      version: ${{ needs.check-toml-version.outputs.version }}
+      version: ${{ steps.get_build_version.outputs.version }}
+      uped_toml: ${{ steps.extract_update.outputs.uped_toml }}
+      pypi_version: ${{ steps.get_pypi_version.outputs.pypi_version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Checkout utils repo
+        uses: actions/checkout@v4
+        with:
+          repository: BYU-CS-Course-Ops/utils
+          path: utils
+
+      - name: Get version from PyPI
+        id: get_pypi_version
+        run: |
+          VERSION=$(curl -s https://pypi.org/pypi/${{ inputs.pypi_package }}/json | jq -r .info.version)
+          echo "pypi_version=$VERSION" >> $GITHUB_ENV
+          echo "pypi_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Install Poetry and Version Plugin
         run: pip install "poetry<2" poetry-version-from-file
@@ -40,10 +52,25 @@ jobs:
       - name: Build PyPI package
         run: poetry build
 
+      - name: Get version from poetry build
+        id: get_build_version
+        run: |
+          VERSION=$(poetry version -s)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check for version update
+        id: extract_update
+        run: |
+          if python3 utils/.github/scripts/check_version.py "${{ steps.get_build_version.outputs.version }}" "${{ env.pypi_version }}"; then
+            echo "uped_toml=true" >> $GITHUB_OUTPUT
+          else
+            echo "uped_toml=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check version was bumped
         id: check
         run: |
-          if [ "${{ needs.check-toml-version.outputs.uped_toml }}" != "true" ]; then
+          if [ "${{ steps.extract_update.outputs.uped_toml }}" != "true" ]; then
             echo "pyproject.toml version was not updated — skipping publish"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
@@ -70,7 +97,7 @@ jobs:
           fi
 
   notify-discord:
-    needs: [check-toml-version, poetry-publish]
+    needs: poetry-publish
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -89,8 +116,8 @@ jobs:
         with:
           pypi-package: ${{ inputs.pypi_package }}
           success: ${{ needs.poetry-publish.outputs.success }}
-          toml-updated: ${{ needs.check-toml-version.outputs.uped_toml }}
+          toml-updated: ${{ needs.poetry-publish.outputs.uped_toml }}
           version: ${{ needs.poetry-publish.outputs.version }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
-          old-version: ${{ needs.check-toml-version.outputs.pypi_version }}
+          old-version: ${{ needs.poetry-publish.outputs.pypi_version }}
