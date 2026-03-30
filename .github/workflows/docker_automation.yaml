@@ -48,7 +48,7 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook pyyaml
+        run: pip install discord-webhook pyyaml markdowndata
 
       - name: Get changed files
         run: |

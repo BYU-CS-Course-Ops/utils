@@ -108,7 +108,7 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook
+        run: pip install discord-webhook markdowndata
 
       - name: Send PyPI notification
         uses: BYU-CS-Course-Ops/utils/.github/actions/send-pypi-notification@claude/wonderful-lovelace
