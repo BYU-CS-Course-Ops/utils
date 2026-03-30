@@ -12,7 +12,8 @@ FORMATTERS = {
 }
 
 
-def main(ntype, payload, course_id, author, author_icon, branch_name, action_url, cicd_role_id):
+def main(ntype, payload, course_id, author, author_icon, branch_name, action_url, cicd_role_id,
+         course_name=None, course_url=None):
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
     if not webhook_url:
         raise EnvironmentError("DISCORD_WEBHOOK_URL environment variable is not set.")
@@ -36,6 +37,8 @@ def main(ntype, payload, course_id, author, author_icon, branch_name, action_url
         author_icon=author_icon,
         branch=branch_name,
         action_url=action_url,
+        course_name=course_name,
+        course_url=course_url,
     )
 
     if requires_review(data) and cicd_role_id:
@@ -54,7 +57,10 @@ if __name__ == "__main__":
     parser.add_argument("--branch", required=True, help="Branch name")
     parser.add_argument("--action-url", required=True, help="URL to the GHA")
     parser.add_argument("--cicd-id", nargs='?', const=None, default=None, help="CI/CD Role ID")
+    parser.add_argument("--course-name", default=None, help="Course name for display")
+    parser.add_argument("--course-url", default=None, help="URL to the course page")
 
     args = parser.parse_args()
 
-    main(args.type, args.payload, args.course_id, args.author, args.author_icon, args.branch, args.action_url, args.cicd_id)
+    main(args.type, args.payload, args.course_id, args.author, args.author_icon, args.branch, args.action_url,
+         args.cicd_id, args.course_name, args.course_url)

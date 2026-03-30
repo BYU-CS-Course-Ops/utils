@@ -20,6 +20,10 @@ inputs:
   discord-webhook-url:
     description: "Discord webhook URL"
     required: true
+  old-version:
+    description: "Previous PyPI version (for version transition display)"
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -37,18 +41,22 @@ runs:
         DISCORD_WEBHOOK_URL: ${{ inputs.discord-webhook-url }}
       run: |
         CMD="PYTHONPATH=utils python -m notifications.send_pypi \
-          --type ${{ inputs.pypi-package }} \
-          --author ${{ github.actor }} \
-          --author-icon ${{ steps.avatar.outputs.url }} \
-          --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          --type '${{ inputs.pypi-package }}' \
+          --author '${{ github.actor }}' \
+          --author-icon '${{ steps.avatar.outputs.url }}' \
+          --action-url 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'"
 
         if [ '${{ inputs.success }}' == 'true' ] && \
            [ '${{ inputs.toml-updated }}' == 'true' ]; then
           CMD="$CMD --success 1"
         fi
 
-        CMD="$CMD --version ${{ inputs.version }} \
-            --cicd-id ${{ inputs.discord-role }}"
+        CMD="$CMD --version '${{ inputs.version }}' \
+            --cicd-id '${{ inputs.discord-role }}'"
+
+        if [ -n "${{ inputs.old-version }}" ]; then
+          CMD="$CMD --old-version '${{ inputs.old-version }}'"
+        fi
 
         echo "$CMD"
         eval "$CMD"

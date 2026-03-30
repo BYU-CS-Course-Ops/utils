@@ -6,6 +6,14 @@ on:
       course_id:
         required: true
         type: string
+      course_info_path:
+        required: false
+        type: string
+        default: ""
+      global_args_path:
+        required: false
+        type: string
+        default: ""
     secrets:
       discord_role:
         required: true
@@ -39,7 +47,7 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook ${{ inputs.extra-packages }}
+        run: pip install discord-webhook pyyaml
 
       - name: Get changed files
         run: |
@@ -78,7 +86,7 @@ jobs:
 
       - name: Send course notification
         if: always()
-        uses: ./.github/actions/send-course-notification
+        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@canvas-notification-updates
         with:
           notification-type: docker
           output-type: Docker
@@ -88,3 +96,5 @@ jobs:
           course-id: ${{ inputs.course_id }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
+          course-info-path: ${{ inputs.course_info_path && format('{0}/{1}', github.workspace, inputs.course_info_path) || '' }}
+          global-args-path: ${{ inputs.global_args_path && format('{0}/{1}', github.workspace, inputs.global_args_path) || '' }}

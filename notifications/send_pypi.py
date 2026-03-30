@@ -5,7 +5,8 @@ from .formatting.pypi_format import format_notification
 from .send_notification import send_notification
 
 
-def main(ntype, author, author_icon, action_url, success=None, version=None, cicd_role_id=None):
+def main(ntype, author, author_icon, action_url, success=None, version=None,
+         cicd_role_id=None, old_version=None):
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
     if not webhook_url:
         raise EnvironmentError("DISCORD_WEBHOOK_URL environment variable is not set.")
@@ -17,6 +18,7 @@ def main(ntype, author, author_icon, action_url, success=None, version=None, cic
         action_url=action_url,
         success=success,
         version=version,
+        old_version=old_version,
     )
 
     if not success and cicd_role_id:
@@ -35,7 +37,9 @@ if __name__ == "__main__":
     parser.add_argument("--success", nargs='?', const=None, default=None, help="Bool indicating success or failure")
     parser.add_argument("--version", nargs='?', const=None, default=None, help="PyPi version")
     parser.add_argument("--cicd-id", nargs='?', const=None, default=None, help="CI/CD Role ID")
+    parser.add_argument("--old-version", default=None, help="Previous PyPI version for transition display")
 
     args = parser.parse_args()
 
-    main(args.type, args.author, args.author_icon, args.action_url, args.success, args.version, args.cicd_id)
+    main(args.type, args.author, args.author_icon, args.action_url, args.success, args.version,
+         args.cicd_id, args.old_version)

@@ -85,6 +85,36 @@ def generate_fields(name: str, value: str, inline: bool = False) -> list[Field]:
         return [Field(name=name, value=value, inline=inline)]
 
 
+def build_resource_summary(deployed_content: list) -> dict[str, int]:
+    """Count deployed items by resource type from deployed_content tuples."""
+    counts: dict[str, int] = {}
+    for rtype, _name, _link in deployed_content:
+        label = rtype.title()
+        counts[label] = counts.get(label, 0) + 1
+    return counts
+
+
+def resource_count_fields(counts: dict[str, int]) -> list[Field]:
+    """Produce inline Discord fields for resource type counts (3 per row)."""
+    return [
+        Field(name=rtype, value=f"**{count}**", inline=True)
+        for rtype, count in counts.items()
+    ]
+
+
+def course_info_field(course_name: str | None, course_url: str | None) -> Field | None:
+    """Create a clickable course link field. Returns None if data is missing."""
+    if course_name and course_url:
+        return Field(
+            name="**Course:**",
+            value=f"[{course_name}]({course_url})",
+            inline=False,
+        )
+    elif course_name:
+        return Field(name="**Course:**", value=course_name, inline=False)
+    return None
+
+
 def truncate_error(error: str, max_chars: int = 900) -> str:
     if not error:
         return "```\nNo error output available.\n```"

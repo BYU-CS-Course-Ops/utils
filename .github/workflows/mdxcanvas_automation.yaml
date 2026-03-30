@@ -61,7 +61,7 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook ${{ inputs.extra-packages }}
+        run: pip install discord-webhook
 
       - name: Create logs directory
         run: mkdir -p "$LOGS_DIR"
@@ -105,3 +105,5 @@ jobs:
           course-id: ${{ inputs.course_id }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
+          course-info-path: ${{ github.workspace }}/${{ inputs.course_info_path }}
+          global-args-path: ${{ github.workspace }}/${{ inputs.global_args_path }}

@@ -13,6 +13,9 @@ on:
       version:
         description: "The version from pyproject.toml"
         value: ${{ jobs.check.outputs.version }}
+      pypi_version:
+        description: "The current version on PyPI"
+        value: ${{ jobs.check.outputs.pypi_version }}
 
 jobs:
   check:
@@ -20,6 +23,7 @@ jobs:
     outputs:
       uped_toml: ${{ steps.extract_update.outputs.uped_toml }}
       version: ${{ steps.get_build_version.outputs.version }}
+      pypi_version: ${{ steps.get_pypi_version.outputs.pypi_version }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -38,6 +42,7 @@ jobs:
         run: |
           VERSION=$(curl -s https://pypi.org/pypi/${{ inputs.pypi_package }}/json | jq -r .info.version)
           echo "pypi_version=$VERSION" >> $GITHUB_ENV
+          echo "pypi_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Install Poetry and Version Plugin
         run: pip install "poetry<2" poetry-version-from-file
@@ -57,5 +62,8 @@ jobs:
       - name: Check for version update
         id: extract_update
         run: |
-          python3 utils/.github/scripts/check_version.py "${{ steps.get_build_version.outputs.version }}" "${{ env.pypi_version }}"
-          echo "uped_toml=true" >> $GITHUB_OUTPUT
+          if python3 utils/.github/scripts/check_version.py "${{ steps.get_build_version.outputs.version }}" "${{ env.pypi_version }}"; then
+            echo "uped_toml=true" >> $GITHUB_OUTPUT
+          else
+            echo "uped_toml=false" >> $GITHUB_OUTPUT
+          fi

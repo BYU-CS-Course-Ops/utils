@@ -4,13 +4,36 @@ from notifications.resources import Notification, Embed, Field, Author, Footer
 from notifications.formatting.formatting_utils import spacer, get_pypi_style, hex_to_int
 
 
-def format_notification(ntype, author, author_icon, action_url, success, version) -> Notification:
+def format_notification(ntype, author, author_icon, action_url, success, version,
+                        old_version=None) -> Notification:
     style = get_pypi_style(ntype)
+    pypi_name = style.get("pypi_name", ntype)
 
     if success:
-        description = f"Updated to version **`{version}`**"
+        if old_version:
+            description = f"**`{old_version}`** \u2192 **`{version}`**"
+        else:
+            description = f"Updated to version **`{version}`**"
     else:
         description = f"An **error occurred** while updating {style['display_name']}."
+
+    fields: list[Field] = [spacer()]
+
+    # PyPI package link on success
+    if success and version:
+        fields.append(Field(
+            name="**PyPI Package:**",
+            value=f"[{pypi_name} v{version}](https://pypi.org/project/{pypi_name}/{version}/)",
+            inline=False,
+        ))
+        fields.append(spacer())
+
+    fields.append(Field(
+        name="**GitHub Action:**",
+        value=f"[View Here]({action_url})",
+        inline=False,
+    ))
+    fields.append(spacer())
 
     return Notification(
         username=style["username"],
@@ -24,14 +47,6 @@ def format_notification(ntype, author, author_icon, action_url, success, version
                 text=style["footer_text"],
                 icon_url=style["footer_icon_url"],
             ),
-            fields=[
-                spacer(),
-                Field(
-                    name="GitHub Action:",
-                    value=f"[View Here]({action_url})",
-                    inline=False,
-                ),
-                spacer(),
-            ],
+            fields=fields,
         )],
     )

@@ -7,8 +7,8 @@
 
 # PyPi Packages
 
-| type             | username                       | display_name     | title                   | hex_color | footer_text                    | footer_icon_url              |
-|------------------|--------------------------------|------------------|-------------------------|-----------|--------------------------------|------------------------------|
-| mdxcanvas        | MDXCanvas Notifications        | MDXCanvas        | MDXCanvas Update        | #F56236   | MDXCanvas GitHub Action        | https://tinyurl.com/4ky2afzx |
-| markdowndata     | MarkdownData Notifications     | MarkdownData     | MarkdownData Update     | #13DC56   | MarkdownData GitHub Action     | https://tinyurl.com/4ky2afzx |
-| byu_pytest_utils | BYU Pytest Utils Notifications | BYU Pytest Utils | BYU Pytest Utils Update | #3498DB   | BYU Pytest Utils GitHub Action | https://tinyurl.com/4ky2afzx |
+| type             | pypi_name        | username                       | display_name     | title                   | hex_color | footer_text                    | footer_icon_url              |
+|------------------|------------------|--------------------------------|------------------|-------------------------|-----------|--------------------------------|------------------------------|
+| mdxcanvas        | mdxcanvas        | MDXCanvas Notifications        | MDXCanvas        | MDXCanvas Update        | #F56236   | MDXCanvas GitHub Action        | https://tinyurl.com/4ky2afzx |
+| markdowndata     | markdowndata     | MarkdownData Notifications     | MarkdownData     | MarkdownData Update     | #13DC56   | MarkdownData GitHub Action     | https://tinyurl.com/4ky2afzx |
+| byu_pytest_utils | byu-pytest-utils | BYU Pytest Utils Notifications | BYU Pytest Utils | BYU Pytest Utils Update | #3498DB   | BYU Pytest Utils GitHub Action | https://tinyurl.com/4ky2afzx |

@@ -7,14 +7,14 @@ on:
         required: true
         type: string
     secrets:
-      pypi_user:
-        required: true
-      pypi_password:
-        required: true
       discord_webhook_url:
         required: true
       discord_role:
         required: true
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   check-toml-version:
@@ -27,7 +27,7 @@ jobs:
     needs: check-toml-version
     runs-on: ubuntu-latest
     outputs:
-      success: ${{ steps.publish.outputs.success }}
+      success: ${{ steps.result.outputs.success }}
       version: ${{ needs.check-toml-version.outputs.version }}
     steps:
       - name: Checkout repository
@@ -42,25 +42,33 @@ jobs:
       - name: Build PyPI package
         run: poetry build
 
-      - name: Publish PyPI package
-        id: publish
-        env:
-          POETRY_PYPI_USERNAME: ${{ secrets.pypi_user }}
-          POETRY_PYPI_PASSWORD: ${{ secrets.pypi_password }}
+      - name: Check version was bumped
+        id: check
         run: |
           if [ "${{ needs.check-toml-version.outputs.uped_toml }}" != "true" ]; then
             echo "pyproject.toml version was not updated — skipping publish"
-            echo "success=false" >> $GITHUB_OUTPUT
-            exit 1
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-          if poetry publish --username "$POETRY_PYPI_USERNAME" --password "$POETRY_PYPI_PASSWORD"; then
-            echo "Publish succeeded"
+      - name: Publish to PyPI via trusted publisher
+        id: publish
+        if: steps.check.outputs.skip != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+
+      - name: Set publish result
+        id: result
+        if: always()
+        run: |
+          if [ "${{ steps.check.outputs.skip }}" == "true" ]; then
+            echo "success=false" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.publish.outcome }}" == "success" ]; then
             echo "success=true" >> $GITHUB_OUTPUT
           else
-            echo "Publish failed"
             echo "success=false" >> $GITHUB_OUTPUT
-            exit 1
           fi
 
   notify-discord:
@@ -76,10 +84,10 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook ${{ inputs.extra-packages }}
+        run: pip install discord-webhook
 
       - name: Send PyPI notification
-        uses: utils/.github/actions/send-pypi-notification
+        uses: BYU-CS-Course-Ops/utils/.github/actions/send-pypi-notification@canvas-notification-updates
         with:
           pypi-package: ${{ inputs.pypi_package }}
           success: ${{ needs.poetry-publish.outputs.success }}
@@ -87,3 +95,4 @@ jobs:
           version: ${{ needs.poetry-publish.outputs.version }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
+          old-version: ${{ needs.check-toml-version.outputs.pypi_version }}
