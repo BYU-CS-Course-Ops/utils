@@ -43,7 +43,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: BYU-CS-Course-Ops/utils
-          ref: claude/wonderful-lovelace
           path: utils
 
       - name: Install notification dependencies
@@ -87,7 +86,7 @@ jobs:
 
       - name: Send course notification
         if: always()
-        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@claude/wonderful-lovelace
+        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@main
         with:
           notification-type: docker
           output-type: Docker

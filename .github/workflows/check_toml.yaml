@@ -35,7 +35,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: BYU-CS-Course-Ops/utils
-          ref: claude/wonderful-lovelace
           path: utils
 
       - name: Get version from PyPI
