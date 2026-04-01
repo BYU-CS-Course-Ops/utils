@@ -1,4 +1,3 @@
-from notifications.resources import Field
 from markdowndata import load
 from pathlib import Path
 
@@ -28,61 +27,6 @@ def get_pypi_style(ntype: str) -> dict[str, str]:
         if row.get("type") == ntype:
             return row
     return {}
-
-
-def spacer(inline=False) -> Field:
-    return Field(name="\u200b", value="\u200b", inline=inline)
-
-
-def generate_fields(name: str, value: str, inline: bool = False) -> list[Field]:
-    # Check if this is a code block
-    if value.startswith('```') and value.endswith('```'):
-        lines = value.split('\n', 1)
-        if len(lines) > 1:
-            rest = lines[1].rsplit('\n```', 1)[0]
-
-            if len(rest) > 1000:
-                chunks = []
-                chunk_size = 1000
-                for i in range(0, len(rest), chunk_size):
-                    chunk = rest[i:i + chunk_size]
-                    chunks.append(f"```\n{chunk}\n```")
-
-                return [
-                    Field(
-                        name=name if i == 0 else "\u200b",
-                        value=chunk_value,
-                        inline=inline
-                    ) for i, chunk_value in enumerate(chunks)
-                ]
-
-    # Original logic for non-code-block values
-    if len(value) > 1024:
-        lines = value.split('\n')
-        chunks = []
-        current = []
-        current_len = 0
-        for line in lines:
-            # +1 for the newline we'll rejoin with
-            needed = len(line) + (1 if current else 0)
-            if current and current_len + needed > 1024:
-                chunks.append('\n'.join(current))
-                current = [line]
-                current_len = len(line)
-            else:
-                current.append(line)
-                current_len += needed
-        if current:
-            chunks.append('\n'.join(current))
-        return [
-            Field(
-                name=name if i == 0 else "\u200b",
-                value=chunk,
-                inline=inline
-            ) for i, chunk in enumerate(chunks)
-        ]
-    else:
-        return [Field(name=name, value=value, inline=inline)]
 
 
 def truncate_error(error: str, max_chars: int = 900) -> str:
