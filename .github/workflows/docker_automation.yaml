@@ -6,14 +6,16 @@ on:
       course_id:
         required: true
         type: string
-      course_info_path:
-        required: false
+      course_name:
+        required: true
         type: string
-        default: ""
-      global_args_path:
-        required: false
+      course_url:
+        required: true
         type: string
-        default: ""
+      utils_ref:
+        required: false
+        default: main
+        type: string
     secrets:
       discord_role:
         required: true
@@ -43,11 +45,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: BYU-CS-Course-Ops/utils
+          ref: ${{ inputs.utils_ref }}
           path: utils
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook pyyaml markdowndata
+        run: pip install discord-webhook markdowndata
 
       - name: Get changed files
         run: |
@@ -86,7 +89,7 @@ jobs:
 
       - name: Send course notification
         if: always()
-        uses: BYU-CS-Course-Ops/utils/.github/actions/send-course-notification@main
+        uses: ./utils/.github/actions/send-course-notification
         with:
           notification-type: docker
           output-type: Docker
@@ -94,7 +97,7 @@ jobs:
           stdout-log: ${{ github.workspace }}/.github/logs/docker_stdout.log
           stderr-log: ${{ github.workspace }}/.github/logs/docker_stderr.log
           course-id: ${{ inputs.course_id }}
+          course-name: ${{ inputs.course_name }}
+          course-url: ${{ inputs.course_url }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
-          course-info-path: ${{ inputs.course_info_path && format('{0}/{1}', github.workspace, inputs.course_info_path) || '' }}
-          global-args-path: ${{ inputs.global_args_path && format('{0}/{1}', github.workspace, inputs.global_args_path) || '' }}

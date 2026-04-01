@@ -1,5 +1,5 @@
 name: Send Course Notification
-description: Create fallback output if needed, get GitHub avatar, and send course notification to Discord
+description: Create fallback output if needed and send course notification to Discord
 
 inputs:
   notification-type:
@@ -20,20 +20,18 @@ inputs:
   course-id:
     description: "Course ID"
     required: true
+  course-name:
+    description: "Course name"
+    required: true
+  course-url:
+    description: "Course URL"
+    required: true
   discord-role:
     description: "Discord CI/CD role ID"
     required: true
   discord-webhook-url:
     description: "Discord webhook URL"
     required: true
-  course-info-path:
-    description: "Path to course_info.json (optional, for course name/URL extraction)"
-    required: false
-    default: ""
-  global-args-path:
-    description: "Path to global_args.yaml (optional, for course name extraction)"
-    required: false
-    default: ""
 
 runs:
   using: composite
@@ -48,57 +46,18 @@ runs:
             --stderr-log "${{ inputs.stderr-log }}" \
             --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-    - name: Get user avatar
-      id: avatar
-      shell: bash
-      run: |
-        AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url // empty')
-        echo "url=${AVATAR_URL:-}" >> $GITHUB_OUTPUT
-
-    - name: Extract course metadata
-      id: course-meta
-      shell: bash
-      run: |
-        COURSE_NAME=""
-        COURSE_URL=""
-        if [ -n "${{ inputs.course-info-path }}" ] && [ -f "${{ inputs.course-info-path }}" ]; then
-          API_URL=$(jq -r '.CANVAS_API_URL' "${{ inputs.course-info-path }}")
-          COURSE_ID=$(jq -r '.CANVAS_COURSE_ID' "${{ inputs.course-info-path }}")
-          if [ "$API_URL" != "null" ] && [ "$COURSE_ID" != "null" ]; then
-            COURSE_URL="${API_URL}/courses/${COURSE_ID}"
-          fi
-        fi
-        if [ -n "${{ inputs.global-args-path }}" ] && [ -f "${{ inputs.global-args-path }}" ]; then
-          COURSE_NAME=$(python3 -c "
-        import yaml
-        with open('${{ inputs.global-args-path }}') as f:
-            data = yaml.safe_load(f)
-        print(data.get('course_name', ''))
-        " 2>/dev/null || echo "")
-        fi
-        echo "name=$COURSE_NAME" >> $GITHUB_OUTPUT
-        echo "url=$COURSE_URL" >> $GITHUB_OUTPUT
-
     - name: Send course notification to Discord
       shell: bash
       env:
         DISCORD_WEBHOOK_URL: ${{ inputs.discord-webhook-url }}
       run: |
-        CMD="PYTHONPATH=utils python -m notifications.send_course \
-            --type '${{ inputs.notification-type }}' \
-            --payload '${{ inputs.payload-path }}' \
-            --course-id '${{ inputs.course-id }}' \
-            --author '${{ github.actor }}' \
-            --author-icon '${{ steps.avatar.outputs.url }}' \
-            --branch '${{ github.ref_name }}' \
-            --cicd-id '${{ inputs.discord-role }}' \
-            --action-url 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'"
-
-        if [ -n "${{ steps.course-meta.outputs.name }}" ]; then
-          CMD="$CMD --course-name '${{ steps.course-meta.outputs.name }}'"
-        fi
-        if [ -n "${{ steps.course-meta.outputs.url }}" ]; then
-          CMD="$CMD --course-url '${{ steps.course-meta.outputs.url }}'"
-        fi
-
-        eval "$CMD"
+        PYTHONPATH=utils python -m notifications.send_course \
+            --type "${{ inputs.notification-type }}" \
+            --payload "${{ inputs.payload-path }}" \
+            --course-id "${{ inputs.course-id }}" \
+            --course-name "${{ inputs.course-name }}" \
+            --course-url "${{ inputs.course-url }}" \
+            --author "${{ github.actor }}" \
+            --branch "${{ github.ref_name }}" \
+            --cicd-id "${{ inputs.discord-role }}" \
+            --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
