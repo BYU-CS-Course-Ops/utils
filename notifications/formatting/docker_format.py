@@ -59,7 +59,7 @@ def format_notification(
         description += f"\n\n{truncated}"
 
     # ── Fields ───────────────────────────────────────────────────────────
-    SPACER = Field(name="\u200b", value="\u200b", inline=False)
+    SPACER = Field(name="\u200b", value="─────────────────────────", inline=False)
     fields = []
 
     if data["failed_images"]:
