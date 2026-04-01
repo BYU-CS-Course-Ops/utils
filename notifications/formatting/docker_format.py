@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from notifications.formatting.formatting_utils import get_course_style, truncate_error
+from notifications.formatting.formatting_utils import chunk_field_lines, get_course_style, truncate_error
 from notifications.formatting.plain_text_utils import status_color
 from notifications.resources import (
     Author,
@@ -63,24 +63,30 @@ def format_notification(
     fields = []
 
     if data["failed_images"]:
-        failed_lines = "\n".join(f"> ❌ `{image}`" for image in data["failed_images"])
+        lines = [f"> ❌ `{image}`" for image in data["failed_images"]]
+        chunks = chunk_field_lines(lines)
+        header = f"❌  Failed ({len(data['failed_images'])})"
         if fields:
             fields.append(SPACER)
-        fields.append(Field(
-            name=f"❌  Failed ({len(data['failed_images'])})",
-            value=failed_lines,
-            inline=False,
-        ))
+        for i, chunk in enumerate(chunks):
+            fields.append(Field(
+                name=header if i == 0 else "\u200b",
+                value=chunk,
+                inline=False,
+            ))
 
     if data["updated_images"]:
-        built_lines = "\n".join(f"> 📦 `{image}`" for image in data["updated_images"])
+        lines = [f"> 📦 `{image}`" for image in data["updated_images"]]
+        chunks = chunk_field_lines(lines)
+        header = f"✅  Built ({len(data['updated_images'])})"
         if fields:
             fields.append(SPACER)
-        fields.append(Field(
-            name=f"✅  Built ({len(data['updated_images'])})",
-            value=built_lines,
-            inline=False,
-        ))
+        for i, chunk in enumerate(chunks):
+            fields.append(Field(
+                name=header if i == 0 else "\u200b",
+                value=chunk,
+                inline=False,
+            ))
 
     # ── Build notification ───────────────────────────────────────────────
     return Notification(

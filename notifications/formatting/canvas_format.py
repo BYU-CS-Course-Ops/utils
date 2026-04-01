@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from notifications.formatting.formatting_utils import (
+    chunk_field_lines,
     emoji_for,
     get_course_style,
     truncate_error,
@@ -78,33 +79,39 @@ def format_notification(
     fields = []
 
     if data["content_to_review"]:
-        review_lines = "\n".join(
+        lines = [
             f"> {_format_item('Assignment', name, link)}"
             for name, link in data["content_to_review"]
-        )
+        ]
+        chunks = chunk_field_lines(lines)
+        header = f"⚠️  Needs review ({len(data['content_to_review'])})"
         if fields:
             fields.append(SPACER)
-        fields.append(Field(
-            name=f"⚠️  Needs review ({len(data['content_to_review'])})",
-            value=review_lines,
-            inline=False,
-        ))
+        for i, chunk in enumerate(chunks):
+            fields.append(Field(
+                name=header if i == 0 else "\u200b",
+                value=chunk,
+                inline=False,
+            ))
 
     remaining = dedupe_remaining_content(
         data["deployed_content"], data["content_to_review"]
     )
     if remaining:
-        deployed_lines = "\n".join(
+        lines = [
             f"> {_format_item(content_type, name, url)}"
             for content_type, name, url in remaining
-        )
+        ]
+        chunks = chunk_field_lines(lines)
+        header = f"✅  Deployed ({len(remaining)})"
         if fields:
             fields.append(SPACER)
-        fields.append(Field(
-            name=f"✅  Deployed ({len(remaining)})",
-            value=deployed_lines,
-            inline=False,
-        ))
+        for i, chunk in enumerate(chunks):
+            fields.append(Field(
+                name=header if i == 0 else "\u200b",
+                value=chunk,
+                inline=False,
+            ))
 
     # ── Build notification ───────────────────────────────────────────────
     return Notification(
