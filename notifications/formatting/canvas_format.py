@@ -74,6 +74,7 @@ def format_notification(
         description += f"\n\n{truncated}"
 
     # ── Fields ───────────────────────────────────────────────────────────
+    SPACER = Field(name="\u200b", value="\u200b", inline=False)
     fields = []
 
     if data["content_to_review"]:
@@ -81,8 +82,10 @@ def format_notification(
             f"> {_format_item('Assignment', name, link)}"
             for name, link in data["content_to_review"]
         )
+        if fields:
+            fields.append(SPACER)
         fields.append(Field(
-            name=f"\n⚠️  Needs review ({len(data['content_to_review'])})",
+            name=f"⚠️  Needs review ({len(data['content_to_review'])})",
             value=review_lines,
             inline=False,
         ))
@@ -95,8 +98,10 @@ def format_notification(
             f"> {_format_item(content_type, name, url)}"
             for content_type, name, url in remaining
         )
+        if fields:
+            fields.append(SPACER)
         fields.append(Field(
-            name=f"\n✅  Deployed ({len(remaining)})",
+            name=f"✅  Deployed ({len(remaining)})",
             value=deployed_lines,
             inline=False,
         ))
