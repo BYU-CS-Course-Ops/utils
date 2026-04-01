@@ -75,7 +75,10 @@ def format_notification(
         description += f"\n\n{truncated}"
 
     # ── Fields ───────────────────────────────────────────────────────────
-    SPACER = Field(name="\u200b", value="─────────────────────────", inline=False)
+    SPACER = [
+        Field(name="\u200b", value="\u200b", inline=False),
+        Field(name="\u200b", value="\u200b", inline=False),
+    ]
     fields = []
 
     if data["content_to_review"]:
@@ -86,7 +89,7 @@ def format_notification(
         chunks = chunk_field_lines(lines)
         header = f"⚠️  Needs review ({len(data['content_to_review'])})"
         if fields:
-            fields.append(SPACER)
+            fields.extend(SPACER)
         for i, chunk in enumerate(chunks):
             fields.append(Field(
                 name=header if i == 0 else "\u200b",
@@ -105,7 +108,7 @@ def format_notification(
         chunks = chunk_field_lines(lines)
         header = f"✅  Deployed ({len(remaining)})"
         if fields:
-            fields.append(SPACER)
+            fields.extend(SPACER)
         for i, chunk in enumerate(chunks):
             fields.append(Field(
                 name=header if i == 0 else "\u200b",

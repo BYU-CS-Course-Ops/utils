@@ -59,7 +59,10 @@ def format_notification(
         description += f"\n\n{truncated}"
 
     # ── Fields ───────────────────────────────────────────────────────────
-    SPACER = Field(name="\u200b", value="─────────────────────────", inline=False)
+    SPACER = [
+        Field(name="\u200b", value="\u200b", inline=False),
+        Field(name="\u200b", value="\u200b", inline=False),
+    ]
     fields = []
 
     if data["failed_images"]:
@@ -67,7 +70,7 @@ def format_notification(
         chunks = chunk_field_lines(lines)
         header = f"❌  Failed ({len(data['failed_images'])})"
         if fields:
-            fields.append(SPACER)
+            fields.extend(SPACER)
         for i, chunk in enumerate(chunks):
             fields.append(Field(
                 name=header if i == 0 else "\u200b",
@@ -80,7 +83,7 @@ def format_notification(
         chunks = chunk_field_lines(lines)
         header = f"✅  Built ({len(data['updated_images'])})"
         if fields:
-            fields.append(SPACER)
+            fields.extend(SPACER)
         for i, chunk in enumerate(chunks):
             fields.append(Field(
                 name=header if i == 0 else "\u200b",
