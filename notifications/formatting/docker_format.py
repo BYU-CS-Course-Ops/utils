@@ -62,17 +62,17 @@ def format_notification(
     fields = []
 
     if data["failed_images"]:
-        failed_lines = "\n".join(f"❌ `{image}`" for image in data["failed_images"])
+        failed_lines = "\n".join(f"> ❌ `{image}`" for image in data["failed_images"])
         fields.append(Field(
-            name=f"❌  Failed ({len(data['failed_images'])})",
+            name=f"\n❌  Failed ({len(data['failed_images'])})",
             value=failed_lines,
             inline=False,
         ))
 
     if data["updated_images"]:
-        built_lines = "\n".join(f"📦 `{image}`" for image in data["updated_images"])
+        built_lines = "\n".join(f"> 📦 `{image}`" for image in data["updated_images"])
         fields.append(Field(
-            name=f"✅  Built ({len(data['updated_images'])})",
+            name=f"\n✅  Built ({len(data['updated_images'])})",
             value=built_lines,
             inline=False,
         ))

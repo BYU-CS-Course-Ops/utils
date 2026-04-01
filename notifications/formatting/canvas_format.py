@@ -78,11 +78,11 @@ def format_notification(
 
     if data["content_to_review"]:
         review_lines = "\n".join(
-            _format_item("Assignment", name, link)
+            f"> {_format_item('Assignment', name, link)}"
             for name, link in data["content_to_review"]
         )
         fields.append(Field(
-            name=f"⚠️  Needs review ({len(data['content_to_review'])})",
+            name=f"\n⚠️  Needs review ({len(data['content_to_review'])})",
             value=review_lines,
             inline=False,
         ))
@@ -92,11 +92,11 @@ def format_notification(
     )
     if remaining:
         deployed_lines = "\n".join(
-            _format_item(content_type, name, url)
+            f"> {_format_item(content_type, name, url)}"
             for content_type, name, url in remaining
         )
         fields.append(Field(
-            name=f"✅  Deployed ({len(remaining)})",
+            name=f"\n✅  Deployed ({len(remaining)})",
             value=deployed_lines,
             inline=False,
         ))
