@@ -237,8 +237,9 @@ def send_notification(webhook_url: str, notification: Notification):
 
     for message in notification.messages:
         if message.sections:
-            for chunk_content in _chunk_plain_text_message(message):
-                outbound_messages.append((chunk_content, []))
+            plain_text_chunks = _chunk_plain_text_message(message)
+            for index, chunk_content in enumerate(plain_text_chunks):
+                outbound_messages.append((chunk_content, message.embeds if index == 0 else []))
             continue
 
         if message.embeds:

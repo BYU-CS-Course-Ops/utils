@@ -28,25 +28,28 @@ def test_canvas_notification_formats_plain_text_sections_with_summary_table_and_
 
     message = notification.messages[0]
     text = "\n\n".join(message.sections)
+    embed = message.embeds[0]
 
-    assert "Course: CS 235 Spring 2026 - https://courses.example/cs235" in text
-    assert "By: robbykapua" in text
-    assert "Branch: main" in text
-    assert "Type" in text
-    assert "Deployed" in text
-    assert "Review" in text
-    assert "Errors" in text
-    assert "Executive Summary:" in text
-    assert "Week 12 Overview" in text
-    assert "Lab 8 Instructions" in text
-    assert "Project Milestone" in text
-    assert "(+1 more)" in text
-    assert "Content to Review:" in text
-    assert "- Needs Review: https://courses.example/review-me" in text
-    assert "- Professor Approval: https://courses.example/professor" in text
-    assert "Remaining Content:" in text
+    assert embed.title == "Canvas Update Needs Review"
+    assert embed.description == "Review required before everything is fully published."
+    assert embed.color != 0
+    assert [field.name for field in embed.fields] == ["Course", "By", "Branch"]
+    assert embed.fields[0].value == "CS 235 Spring 2026\nhttps://courses.example/cs235"
+    assert embed.fields[1].value == "robbykapua"
+    assert embed.fields[2].value == "main"
+    assert embed.footer is not None
+    assert "Canvas" in embed.footer.text
+
+    assert "## Status" in text
+    assert "**Action needed:** 2 items need review. 4 items were published." in text
+    assert "> Updated content: Week 12 Overview, Lab 8 Instructions, Project Milestone (+1 more)" in text
+    assert "## Needs Review" in text
+    assert "- **Needs Review**: https://courses.example/review-me" in text
+    assert "- **Professor Approval**: https://courses.example/professor" in text
+    assert "## Published" in text
     assert text.count("https://courses.example/review-me") == 1
-    assert "Run: https://github.com/testkapua/testni-repo/actions/runs/123" in text
+    assert "## Run" in text
+    assert "https://github.com/testkapua/testni-repo/actions/runs/123" in text
 
 
 def test_canvas_notification_includes_truncated_error_section_when_present():
@@ -73,9 +76,11 @@ def test_canvas_notification_includes_truncated_error_section_when_present():
         action_url="https://github.com/testkapua/testni-repo/actions/runs/123",
     )
 
-    text = "\n\n".join(notification.messages[0].sections)
+    message = notification.messages[0]
+    text = "\n\n".join(message.sections)
 
-    assert "Error:" in text
+    assert message.embeds[0].title == "Canvas Update Needs Review"
+    assert "## Error" in text
     assert "Traceback (most recent call last):" in text
     assert "RuntimeError: boom" in text
 
@@ -96,14 +101,21 @@ def test_docker_notification_formats_plain_text_sections_without_links_or_canvas
         action_url="https://github.com/testkapua/testni-repo/actions/runs/123",
     )
 
-    text = "\n\n".join(notification.messages[0].sections)
+    message = notification.messages[0]
+    text = "\n\n".join(message.sections)
+    embed = message.embeds[0]
 
-    assert "Course: CS 235 Spring 2026 - https://courses.example/cs235" in text
-    assert "Updated Images:" in text
-    assert "- lab-1" in text
-    assert "- lab-2" in text
-    assert "Failed Images:" in text
-    assert "- project-base" in text
+    assert embed.title == "Docker Update Needs Attention"
+    assert embed.description == "Some images failed and may need follow-up."
+    assert [field.name for field in embed.fields] == ["Course", "By", "Branch"]
+    assert "## Status" in text
+    assert "**Status:** 2 images updated. 1 image failed." in text
+    assert "> Updated images: `lab-1`, `lab-2`" in text
+    assert "## Updated Images" in text
+    assert "- `lab-1`" in text
+    assert "- `lab-2`" in text
+    assert "## Failed Images" in text
+    assert "- `project-base`" in text
     assert "Type" not in text
     assert "https://courses.example/lab-1" not in text
 
@@ -132,7 +144,9 @@ def test_docker_notification_includes_error_section_for_failures():
         action_url="https://github.com/testkapua/testni-repo/actions/runs/123",
     )
 
-    text = "\n\n".join(notification.messages[0].sections)
+    message = notification.messages[0]
+    text = "\n\n".join(message.sections)
 
-    assert "Error:" in text
+    assert message.embeds[0].title == "Docker Update Needs Attention"
+    assert "## Error" in text
     assert "ValueError: bad image" in text

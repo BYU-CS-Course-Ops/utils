@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from notifications.resources import Embed, Field, Footer
 
 MAX_SECTION_CHARS = 1100
+SUCCESS_COLOR = 0x2E8B57
+REVIEW_COLOR = 0xD97706
+ERROR_COLOR = 0xDC2626
 
 
 def pluralize(count: int, singular: str, plural: str | None = None) -> str:
@@ -31,71 +35,79 @@ def summarize_names(names: Iterable[str], limit: int = 3) -> str:
     return summary
 
 
-def render_summary_table(rows: list[tuple[str, int]]) -> str:
-    type_width = max(len("Type"), *(len(label) for label, _ in rows))
-    count_width = max(len("Count"), *(len(str(count)) for _, count in rows))
-
-    lines = [
-        f"{'Type':<{type_width}} | {'Count':>{count_width}}",
-        f"{'-' * type_width}-+-{'-' * count_width}",
-    ]
-    lines.extend(f"{label:<{type_width}} | {count:>{count_width}}" for label, count in rows)
-    return "```\n" + "\n".join(lines) + "\n```"
-
-
-def build_header_section(
-    status_header: str,
+def build_metadata_embed(
+    *,
+    title: str,
+    description: str,
     course_name: str,
     course_url: str,
     author: str,
     branch: str,
-    executive_summary: str,
-    summary_table: str | None = None,
-) -> str:
-    lines = [
-        status_header,
-        f"Course: {course_name} - {course_url}",
-        f"By: {author}",
-        f"Branch: {branch}",
-    ]
+    footer_text: str,
+    footer_icon_url: str,
+    timestamp: str,
+    color: int,
+) -> Embed:
+    return Embed(
+        title=title,
+        description=description,
+        color=color,
+        fields=[
+            Field(name="Course", value=f"{course_name}\n{course_url}", inline=True),
+            Field(name="By", value=author, inline=True),
+            Field(name="Branch", value=branch, inline=True),
+        ],
+        timestamp=timestamp,
+        footer=Footer(text=footer_text, icon_url=footer_icon_url),
+    )
 
-    if summary_table:
-        lines.extend(["", summary_table])
 
-    lines.extend(["", f"Executive Summary: {executive_summary}"])
+def status_color(*, has_error: bool, needs_review: bool) -> int:
+    if has_error:
+        return ERROR_COLOR
+    if needs_review:
+        return REVIEW_COLOR
+    return SUCCESS_COLOR
+
+
+def build_status_section(summary_line: str, highlight: str | None = None) -> str:
+    lines = ["## Status", summary_line]
+    if highlight:
+        lines.append(highlight)
     return "\n".join(lines)
 
 
-def build_bullet_sections(title: str, items: list[str], max_chars: int = MAX_SECTION_CHARS) -> list[str]:
+def build_markdown_list_sections(title: str, items: list[str], max_chars: int = MAX_SECTION_CHARS) -> list[str]:
     if not items:
         return []
 
     sections = []
     current_lines: list[str] = []
-    current_length = len(title) + 1
+    heading = f"## {title}"
+    current_length = len(heading) + 1
 
     for item in items:
         line = f"- {item}"
         needed = len(line) + (1 if current_lines else 0)
         if current_lines and current_length + needed > max_chars:
-            sections.append(f"{title}\n" + "\n".join(current_lines))
+            sections.append(f"{heading}\n" + "\n".join(current_lines))
             current_lines = [line]
-            current_length = len(title) + 1 + len(line)
+            current_length = len(heading) + 1 + len(line)
             continue
 
         current_lines.append(line)
         current_length += needed
 
     if current_lines:
-        sections.append(f"{title}\n" + "\n".join(current_lines))
+        sections.append(f"{heading}\n" + "\n".join(current_lines))
 
     return sections
 
 
-def build_text_section(title: str, body: str | None) -> list[str]:
+def build_markdown_text_section(title: str, body: str | None) -> list[str]:
     if not body:
         return []
-    return [f"{title}\n{body}"]
+    return [f"## {title}\n{body}"]
 
 
 def dedupe_remaining_content(
@@ -131,11 +143,11 @@ def format_link_items(items: Iterable[tuple[str, str | None]]) -> list[str]:
     formatted = []
     for label, url in items:
         if url:
-            formatted.append(f"{label}: {url}")
+            formatted.append(f"**{label}**: {url}")
         else:
-            formatted.append(label)
+            formatted.append(f"**{label}**")
     return formatted
 
 
 def format_name_items(items: Iterable[str]) -> list[str]:
-    return [item for item in items if item]
+    return [f"`{item}`" for item in items if item]

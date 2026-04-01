@@ -1,12 +1,13 @@
 from notifications.formatting.formatting_utils import get_course_style, truncate_error
 from notifications.formatting.plain_text_utils import (
-    build_bullet_sections,
-    build_header_section,
-    build_text_section,
+    build_markdown_list_sections,
+    build_markdown_text_section,
+    build_metadata_embed,
+    build_status_section,
     dedupe_remaining_content,
     format_link_items,
     pluralize,
-    render_summary_table,
+    status_color,
     summarize_names,
 )
 from notifications.resources import Notification, WebhookMessage
@@ -29,17 +30,23 @@ def _build_canvas_summary(data: dict) -> str:
     review_count = len(data["content_to_review"])
     error_count = 1 if data["error"] else 0
 
-    summary = (
-        f"{deployed_count} {pluralize(deployed_count, 'item')} deployed, "
-        f"{review_count} {pluralize(review_count, 'item')} need review, "
-        f"{error_count} {pluralize(error_count, 'error')}."
-    )
+    if review_count:
+        summary = (
+            f"**Action needed:** {review_count} {pluralize(review_count, 'item')} need review. "
+            f"{deployed_count} {pluralize(deployed_count, 'item')} were published."
+        )
+    elif error_count:
+        summary = (
+            f"**Action needed:** {error_count} {pluralize(error_count, 'error')} was reported. "
+            f"{deployed_count} {pluralize(deployed_count, 'item')} were published."
+        )
+    else:
+        summary = f"**Status:** {deployed_count} {pluralize(deployed_count, 'item')} were published."
 
     changed_items = summarize_names(content for _, content, _ in data["deployed_content"])
     if changed_items:
-        summary += f" Changed items: {changed_items}."
-
-    return summary
+        return summary, f"> Updated content: {changed_items}"
+    return summary, None
 
 
 def format_notification(
@@ -56,16 +63,16 @@ def format_notification(
 
     deployed_count = len(data["deployed_content"])
     review_count = len(data["content_to_review"])
-    error_count = 1 if data["error"] else 0
 
-    status_header = "Canvas update needs review" if requires_review(data) else "Canvas update posted"
-    summary_table = render_summary_table(
-        [
-            ("Deployed", deployed_count),
-            ("Review", review_count),
-            ("Errors", error_count),
-        ]
+    embed_title = "Canvas Update Needs Review" if requires_review(data) else "Canvas Update Posted"
+    embed_description = (
+        "A publishing error was reported."
+        if data["error"]
+        else "Review required before everything is fully published."
+        if review_count
+        else "Everything published cleanly."
     )
+    summary_line, highlight = _build_canvas_summary(data)
 
     review_items = format_link_items(data["content_to_review"])
     remaining_items = format_link_items(
@@ -78,20 +85,26 @@ def format_notification(
         avatar_url=style["avatar_url"],
         messages=[
             WebhookMessage(
-                sections=[
-                    build_header_section(
-                        status_header=status_header,
+                embeds=[
+                    build_metadata_embed(
+                        title=embed_title,
+                        description=embed_description,
                         course_name=course_name,
                         course_url=course_url,
                         author=author,
                         branch=branch,
-                        summary_table=summary_table,
-                        executive_summary=_build_canvas_summary(data),
-                    ),
-                    *build_bullet_sections("Content to Review:", review_items),
-                    *build_bullet_sections("Remaining Content:", remaining_items),
-                    *build_text_section("Error:", error),
-                    f"Run: {action_url}",
+                        footer_text=style["footer_text"],
+                        footer_icon_url=style["footer_icon_url"],
+                        timestamp="",
+                        color=status_color(has_error=bool(data["error"]), needs_review=requires_review(data)),
+                    )
+                ],
+                sections=[
+                    build_status_section(summary_line, highlight),
+                    *build_markdown_list_sections("Needs Review", review_items),
+                    *build_markdown_list_sections("Published", remaining_items),
+                    *build_markdown_text_section("Error", error),
+                    f"## Run\n{action_url}",
                 ],
                 continuation_title="Canvas details (continued)",
             )
