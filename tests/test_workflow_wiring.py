@@ -38,3 +38,11 @@ def test_course_workflows_accept_utils_ref_and_use_local_utils_action():
     assert "ref: ${{ inputs.utils_ref }}" in docker_workflow
     assert "uses: ./utils/.github/actions/send-course-notification" in canvas_workflow
     assert "uses: ./utils/.github/actions/send-course-notification" in docker_workflow
+
+
+def test_course_workflows_install_markdowndata_for_notification_formatting():
+    canvas_workflow = Path(".github/workflows/mdxcanvas_automation.yaml").read_text()
+    docker_workflow = Path(".github/workflows/docker_automation.yaml").read_text()
+
+    assert "pip install discord-webhook markdowndata" in canvas_workflow
+    assert "pip install discord-webhook markdowndata" in docker_workflow
