@@ -1,7 +1,5 @@
-import pytest
-
-from notifications.resources import Embed, Field, Author, Footer
-from notifications.send_notification import _calc_embed_size, _chunk_embed, MAX_EMBED_CHARS
+from notifications.resources import Author, Embed, Field, Footer
+from notifications.send_notification import MAX_EMBED_CHARS, _calc_embed_size, _chunk_embed
 
 
 class TestCalcEmbedSize:
@@ -45,7 +43,6 @@ class TestCalcEmbedSize:
             fields=[Field(name="\u200b", value="\u200b")],
             timestamp="",
         )
-        # Zero-width spaces are 1 char each
         assert _calc_embed_size(embed) == 2
 
 
@@ -65,7 +62,6 @@ class TestChunkEmbed:
         assert chunks[0] is embed
 
     def test_large_embed_splits(self):
-        # Create fields that will exceed the limit
         fields = [Field(name=f"field-{i}", value="x" * 500) for i in range(20)]
         embed = Embed(
             title="Big Embed",
@@ -187,7 +183,6 @@ class TestChunkEmbed:
             assert chunk.footer is None
 
     def test_typical_pypi_embed_stays_single(self):
-        # A typical pypi notification is small enough to fit in one embed
         fields = [
             Field(name="Package", value="my-package"),
             Field(name="Version", value="1.2.3"),

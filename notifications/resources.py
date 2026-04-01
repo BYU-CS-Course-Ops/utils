@@ -32,8 +32,15 @@ class Embed:
 
 
 @dataclass
+class WebhookMessage:
+    content: str | None = None
+    embeds: list[Embed] = field(default_factory=list)
+    sections: list[str] = field(default_factory=list)
+    continuation_title: str | None = None
+
+
+@dataclass
 class Notification:
     username: str
-    embeds: list[Embed]
+    messages: list[WebhookMessage]
     avatar_url: str | None = None
-    content: str | None = None

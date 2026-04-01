@@ -6,6 +6,12 @@ on:
       course_id:
         required: true
         type: string
+      course_name:
+        required: true
+        type: string
+      course_url:
+        required: true
+        type: string
       mdxcanvas_version:
         required: true
         type: string
@@ -103,5 +109,7 @@ jobs:
           stdout-log: ${{ env.LOGS_DIR }}/mdxcanvas.stdout.log
           stderr-log: ${{ env.LOGS_DIR }}/mdxcanvas.stderr.log
           course-id: ${{ inputs.course_id }}
+          course-name: ${{ inputs.course_name }}
+          course-url: ${{ inputs.course_url }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}

@@ -6,6 +6,12 @@ on:
       course_id:
         required: true
         type: string
+      course_name:
+        required: true
+        type: string
+      course_url:
+        required: true
+        type: string
     secrets:
       discord_role:
         required: true
@@ -86,5 +92,7 @@ jobs:
           stdout-log: ${{ github.workspace }}/.github/logs/docker_stdout.log
           stderr-log: ${{ github.workspace }}/.github/logs/docker_stderr.log
           course-id: ${{ inputs.course_id }}
+          course-name: ${{ inputs.course_name }}
+          course-url: ${{ inputs.course_url }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}

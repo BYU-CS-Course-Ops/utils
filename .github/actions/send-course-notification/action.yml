@@ -1,5 +1,5 @@
 name: Send Course Notification
-description: Create fallback output if needed, get GitHub avatar, and send course notification to Discord
+description: Create fallback output if needed and send course notification to Discord
 
 inputs:
   notification-type:
@@ -19,6 +19,12 @@ inputs:
     required: true
   course-id:
     description: "Course ID"
+    required: true
+  course-name:
+    description: "Course name"
+    required: true
+  course-url:
+    description: "Course URL"
     required: true
   discord-role:
     description: "Discord CI/CD role ID"
@@ -40,13 +46,6 @@ runs:
             --stderr-log "${{ inputs.stderr-log }}" \
             --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-    - name: Get user avatar
-      id: avatar
-      shell: bash
-      run: |
-        AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url')
-        echo "url=$AVATAR_URL" >> $GITHUB_OUTPUT
-
     - name: Send course notification to Discord
       shell: bash
       env:
@@ -56,8 +55,9 @@ runs:
             --type "${{ inputs.notification-type }}" \
             --payload "${{ inputs.payload-path }}" \
             --course-id "${{ inputs.course-id }}" \
+            --course-name "${{ inputs.course-name }}" \
+            --course-url "${{ inputs.course-url }}" \
             --author "${{ github.actor }}" \
-            --author-icon "${{ steps.avatar.outputs.url }}" \
-            --branch "${{ github.ref }}" \
+            --branch "${{ github.ref_name }}" \
             --cicd-id "${{ inputs.discord-role }}" \
             --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -19,8 +19,8 @@ def main(ntype, author, author_icon, action_url, success=None, version=None, cic
         version=version,
     )
 
-    if not success and cicd_role_id:
-        notification.content = f"<@&{cicd_role_id}>"
+    if not success and cicd_role_id and notification.messages:
+        notification.messages[0].content = f"<@&{cicd_role_id}>"
 
     send_notification(webhook_url, notification)
 

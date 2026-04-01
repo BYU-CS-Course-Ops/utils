@@ -1,7 +1,8 @@
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-from .resources import Embed, Notification
+from .resources import Embed, Notification, WebhookMessage
 
+MAX_CONTENT_CHARS = 2000
 MAX_EMBED_CHARS = 5900  # 100-char safety margin below Discord's 6000
 
 
@@ -90,66 +91,182 @@ def _chunk_embed(embed: Embed, max_chars: int = MAX_EMBED_CHARS) -> list[Embed]:
     return chunks
 
 
+def _split_plain_text_content(content: str, max_chars: int) -> list[str]:
+    if len(content) <= max_chars:
+        return [content]
+
+    paragraphs = content.split("\n\n")
+    chunks = []
+    current_parts: list[str] = []
+    current_length = 0
+
+    for paragraph in paragraphs:
+        needed = len(paragraph) + (2 if current_parts else 0)
+        if current_parts and current_length + needed > max_chars:
+            chunks.append("\n\n".join(current_parts))
+            current_parts = [paragraph]
+            current_length = len(paragraph)
+            continue
+        current_parts.append(paragraph)
+        current_length += needed
+
+    if current_parts:
+        chunks.append("\n\n".join(current_parts))
+
+    return chunks
+
+
+def _split_large_section(section: str, max_chars: int) -> list[str]:
+    if len(section) <= max_chars:
+        return [section]
+
+    lines = section.splitlines()
+    if len(lines) <= 1:
+        return _split_plain_text_content(section, max_chars)
+
+    heading = lines[0]
+    body_lines = lines[1:]
+    sections = []
+    current_lines: list[str] = []
+    current_length = len(heading) + 1
+
+    for line in body_lines:
+        needed = len(line) + (1 if current_lines else 0)
+        if current_lines and current_length + needed > max_chars:
+            sections.append(heading + "\n" + "\n".join(current_lines))
+            current_lines = [line]
+            current_length = len(heading) + 1 + len(line)
+            continue
+        current_lines.append(line)
+        current_length += needed
+
+    if current_lines:
+        sections.append(heading + "\n" + "\n".join(current_lines))
+
+    return sections
+
+
+def _chunk_plain_text_message(message: WebhookMessage, max_chars: int = MAX_CONTENT_CHARS) -> list[str]:
+    if not message.sections:
+        return _split_plain_text_content(message.content or "", max_chars) if message.content else []
+
+    first_prefix = message.content
+    continuation_prefix = message.continuation_title
+    chunked_sections = []
+
+    for section in message.sections:
+        prefix_length = len(continuation_prefix or "") + 2 if continuation_prefix else 0
+        chunked_sections.extend(_split_large_section(section, max_chars - prefix_length))
+
+    chunks = []
+    current_sections: list[str] = []
+    current_prefix = first_prefix
+    current_length = len(current_prefix) + 2 if current_prefix else 0
+
+    for section in chunked_sections:
+        needed = len(section) + (2 if current_sections or current_prefix else 0)
+        if current_sections and current_length + needed > max_chars:
+            chunks.append("\n\n".join(([current_prefix] if current_prefix else []) + current_sections))
+            current_sections = []
+            current_prefix = continuation_prefix
+            current_length = len(current_prefix) + 2 if current_prefix else 0
+
+        current_sections.append(section)
+        current_length += len(section) + (2 if current_sections[:-1] or current_prefix else 0)
+
+    if current_sections:
+        chunks.append("\n\n".join(([current_prefix] if current_prefix else []) + current_sections))
+
+    return chunks
+
+
+def _build_discord_embed(embed_data: Embed) -> DiscordEmbed:
+    embed = DiscordEmbed(
+        title=embed_data.title,
+        description=embed_data.description,
+        color=embed_data.color,
+        timestamp=embed_data.timestamp,
+    )
+
+    if embed_data.author:
+        embed.set_author(
+            name=embed_data.author.name,
+            icon_url=embed_data.author.icon_url,
+        )
+
+    if embed_data.footer:
+        embed.set_footer(
+            text=embed_data.footer.text,
+            icon_url=embed_data.footer.icon_url,
+        )
+
+    for field in embed_data.fields:
+        field_name = field.name or "\u200b"
+        field_value = field.value or "\u200b"
+
+        if not field_name.strip():
+            field_name = "\u200b"
+        if not field_value.strip():
+            field_value = "\u200b"
+
+        embed.add_embed_field(
+            name=field_name,
+            value=field_value,
+            inline=field.inline,
+        )
+
+    return embed
+
+
+def _execute_webhook(webhook_url: str, notification: Notification, content: str | None = None, embeds: list[Embed] | None = None):
+    webhook = DiscordWebhook(
+        url=webhook_url,
+        username=notification.username,
+        avatar_url=notification.avatar_url,
+        content=content,
+    )
+
+    for embed_data in embeds or []:
+        webhook.add_embed(_build_discord_embed(embed_data))
+
+    return webhook.execute()
+
+
 def send_notification(webhook_url: str, notification: Notification):
-    # Chunk all embeds
-    all_chunks = []
-    for embed_data in notification.embeds:
-        all_chunks.extend(_chunk_embed(embed_data))
+    outbound_messages: list[tuple[str | None, list[Embed]]] = []
 
-    for i, embed_data in enumerate(all_chunks):
-        is_first = (i == 0)
-
-        webhook = DiscordWebhook(
-            url=webhook_url,
-            username=notification.username,
-            avatar_url=notification.avatar_url,
-            content=notification.content if is_first else None,
-        )
-
-        embed = DiscordEmbed(
-            title=embed_data.title,
-            description=embed_data.description,
-            color=embed_data.color,
-            timestamp=embed_data.timestamp,
-        )
-
-        if embed_data.author:
-            embed.set_author(
-                name=embed_data.author.name,
-                icon_url=embed_data.author.icon_url,
-            )
-
-        if embed_data.footer:
-            embed.set_footer(
-                text=embed_data.footer.text,
-                icon_url=embed_data.footer.icon_url,
-            )
-
-        for field in embed_data.fields:
-            field_name = field.name
-            field_value = field.value
-
-            if not field_name or not field_name.strip():
-                field_name = "\u200b"
-            if not field_value or not field_value.strip():
-                field_value = "\u200b"
-
-            embed.add_embed_field(
-                name=field_name,
-                value=field_value,
-                inline=field.inline,
-            )
-
-        webhook.add_embed(embed)
-
-        try:
-            response = webhook.execute()
-        except Exception as e:
-            print(f"\u274c Error sending chunk {i + 1}/{len(all_chunks)}: {e}")
+    for message in notification.messages:
+        if message.sections:
+            for chunk_content in _chunk_plain_text_message(message):
+                outbound_messages.append((chunk_content, []))
             continue
 
-        # TODO: Check for Discord's specific character-limit error code
+        if message.embeds:
+            embed_chunks = []
+            for embed_data in message.embeds:
+                embed_chunks.extend(_chunk_embed(embed_data))
+
+            for index, embed_data in enumerate(embed_chunks):
+                outbound_messages.append((message.content if index == 0 else None, [embed_data]))
+            continue
+
+        if message.content:
+            for chunk_content in _split_plain_text_content(message.content, MAX_CONTENT_CHARS):
+                outbound_messages.append((chunk_content, []))
+
+    for index, (content, embeds) in enumerate(outbound_messages, start=1):
+        try:
+            response = _execute_webhook(
+                webhook_url=webhook_url,
+                notification=notification,
+                content=content,
+                embeds=embeds,
+            )
+        except Exception as e:
+            print(f"\u274c Error sending chunk {index}/{len(outbound_messages)}: {e}")
+            continue
+
         if response.status_code >= 400:
-            print(f"\u274c Discord returned status {response.status_code} on chunk {i + 1}/{len(all_chunks)}: {response.text}")
+            print(f"\u274c Discord returned status {response.status_code} on chunk {index}/{len(outbound_messages)}: {response.text}")
         else:
-            print(f"\u2705 Sent chunk {i + 1}/{len(all_chunks)} successfully.")
+            print(f"\u2705 Sent chunk {index}/{len(outbound_messages)} successfully.")

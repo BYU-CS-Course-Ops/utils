@@ -1,7 +1,15 @@
-from datetime import datetime
-
-from notifications.resources import Notification, Embed, Field, Author, Footer
-from notifications.formatting.formatting_utils import spacer, generate_fields, truncate_error, get_course_style, hex_to_int
+from notifications.formatting.formatting_utils import get_course_style, truncate_error
+from notifications.formatting.plain_text_utils import (
+    build_bullet_sections,
+    build_header_section,
+    build_text_section,
+    dedupe_remaining_content,
+    format_link_items,
+    pluralize,
+    render_summary_table,
+    summarize_names,
+)
+from notifications.resources import Notification, WebhookMessage
 
 
 def has_content(data) -> bool:
@@ -16,64 +24,76 @@ def requires_review(data) -> bool:
     return bool(data["content_to_review"] or data["error"])
 
 
-def format_notification(data, course_id, author, author_icon, branch, action_url) -> Notification:
+def _build_canvas_summary(data: dict) -> str:
+    deployed_count = len(data["deployed_content"])
+    review_count = len(data["content_to_review"])
+    error_count = 1 if data["error"] else 0
+
+    summary = (
+        f"{deployed_count} {pluralize(deployed_count, 'item')} deployed, "
+        f"{review_count} {pluralize(review_count, 'item')} need review, "
+        f"{error_count} {pluralize(error_count, 'error')}."
+    )
+
+    changed_items = summarize_names(content for _, content, _ in data["deployed_content"])
+    if changed_items:
+        summary += f" Changed items: {changed_items}."
+
+    return summary
+
+
+def format_notification(
+    data,
+    course_id,
+    course_name,
+    course_url,
+    author,
+    author_icon,
+    branch,
+    action_url,
+) -> Notification:
     style = get_course_style("canvas")
 
-    deployed_content = (
-        '\n'.join(f'- **{rtype}**: [{content}]({link})' if link else f'- **{rtype}**: {content}'
-                  for rtype, content, link in data['deployed_content'])) \
-        if data['deployed_content'] \
-        else '*No items deployed*'
+    deployed_count = len(data["deployed_content"])
+    review_count = len(data["content_to_review"])
+    error_count = 1 if data["error"] else 0
 
-    content_to_review = (
-        '\n'.join(f'- [{dat[0]}]({dat[1]})'
-                  for dat in data['content_to_review'])) \
-        if data['content_to_review'] \
-        else '*No items to review*'
+    status_header = "Canvas update needs review" if requires_review(data) else "Canvas update posted"
+    summary_table = render_summary_table(
+        [
+            ("Deployed", deployed_count),
+            ("Review", review_count),
+            ("Errors", error_count),
+        ]
+    )
 
-    error = data["error"] if data['error'] else '*No errors*'
-    if error != '*No errors*':
-        error = truncate_error(error)
+    review_items = format_link_items(data["content_to_review"])
+    remaining_items = format_link_items(
+        dedupe_remaining_content(data["deployed_content"], data["content_to_review"])
+    )
+    error = truncate_error(data["error"]) if data["error"] else None
 
     return Notification(
         username=style["username"],
         avatar_url=style["avatar_url"],
-        embeds=[Embed(
-            title=style["title_template"].format(course_id=course_id),
-            description=f'**`{branch}`**',
-            color=hex_to_int(style["hex_color"]),
-            timestamp=datetime.now().isoformat(),
-            author=Author(name=author, icon_url=author_icon),
-            footer=Footer(
-                text=style["footer_text"],
-                icon_url=style["footer_icon_url"],
-            ),
-            fields=[
-                spacer(),
-                *generate_fields(
-                    name='**Deployed Content:**',
-                    value=deployed_content,
-                    inline=False,
-                ),
-                spacer(),
-                *generate_fields(
-                    name='**Content to Review:**',
-                    value=content_to_review,
-                    inline=False,
-                ),
-                spacer(),
-                *generate_fields(
-                    name='**Error:**',
-                    value=error,
-                    inline=False,
-                ),
-                spacer(),
-                Field(
-                    name='**GitHub Action:**',
-                    value=f'[View here]({action_url})',
-                    inline=False,
-                ),
-                spacer(),
-            ],
-        )],
+        messages=[
+            WebhookMessage(
+                sections=[
+                    build_header_section(
+                        status_header=status_header,
+                        course_name=course_name,
+                        course_url=course_url,
+                        author=author,
+                        branch=branch,
+                        summary_table=summary_table,
+                        executive_summary=_build_canvas_summary(data),
+                    ),
+                    *build_bullet_sections("Content to Review:", review_items),
+                    *build_bullet_sections("Remaining Content:", remaining_items),
+                    *build_text_section("Error:", error),
+                    f"Run: {action_url}",
+                ],
+                continuation_title="Canvas details (continued)",
+            )
+        ],
     )
