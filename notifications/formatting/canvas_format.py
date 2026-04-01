@@ -33,10 +33,10 @@ def requires_review(data) -> bool:
 
 
 def _format_item(resource_type: str, name: str, link: str | None) -> str:
-    emoji = emoji_for(resource_type)
+    label = f"`{resource_type}`"
     if link:
-        return f"{emoji} [{name}]({link})"
-    return f"{emoji} {name}"
+        return f"📌 {label} [{name}]({link})"
+    return f"📌 {label} {name}"
 
 
 def format_notification(
