@@ -26,11 +26,15 @@ def test_course_workflows_expose_and_forward_course_metadata_inputs():
     assert "course-url: ${{ inputs.course_url }}" in docker_workflow
 
 
-def test_course_workflows_checkout_utils_at_called_workflow_sha_and_use_local_utils_action():
+def test_course_workflows_accept_utils_ref_and_use_local_utils_action():
     canvas_workflow = Path(".github/workflows/mdxcanvas_automation.yaml").read_text()
     docker_workflow = Path(".github/workflows/docker_automation.yaml").read_text()
 
-    assert "ref: ${{ github.workflow_sha }}" in canvas_workflow
-    assert "ref: ${{ github.workflow_sha }}" in docker_workflow
+    assert "utils_ref:" in canvas_workflow
+    assert "utils_ref:" in docker_workflow
+    assert "default: main" in canvas_workflow
+    assert "default: main" in docker_workflow
+    assert "ref: ${{ inputs.utils_ref }}" in canvas_workflow
+    assert "ref: ${{ inputs.utils_ref }}" in docker_workflow
     assert "uses: ./utils/.github/actions/send-course-notification" in canvas_workflow
     assert "uses: ./utils/.github/actions/send-course-notification" in docker_workflow
