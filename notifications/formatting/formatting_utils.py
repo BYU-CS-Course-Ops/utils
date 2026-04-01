@@ -2,19 +2,24 @@ from markdowndata import load
 from pathlib import Path
 
 # ── Resource type badge emoji mapping ────────────────────────────────────────
+# Keys are lowercase for case-insensitive matching.
 RESOURCE_EMOJI: dict[str, str] = {
-    "Page":        "📄",
-    "Quiz":        "📝",
-    "Assignment":  "📎",
-    "Module":      "📦",
-    "Discussion":  "💬",
-    "File":        "📁",
-    "ExternalUrl": "🔗",
+    "page":         "📄",
+    "quiz":         "📝",
+    "assignment":   "📎",
+    "module":       "📦",
+    "module_item":  "📂",
+    "discussion":   "💬",
+    "file":         "📁",
+    "externalurl":  "🔗",
+    "external_url": "🔗",
+    "announcement": "📢",
+    "syllabus":     "📋",
 }
 
 
 def emoji_for(resource_type: str) -> str:
-    return RESOURCE_EMOJI.get(resource_type, "📌")
+    return RESOURCE_EMOJI.get(resource_type.lower(), "📌")
 
 
 # ── Field chunking (Discord field value limit: 1024 chars) ──────────────────
