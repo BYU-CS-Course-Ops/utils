@@ -21,27 +21,42 @@ def test_canvas_notification_with_review_items():
         course_name="CS 235 Spring 2026",
         course_url="https://courses.example/cs235",
         author="robbykapua",
-        author_icon="",
+        author_icon="https://github.com/robbykapua.png",
         branch="main",
         action_url="https://github.com/testkapua/testing-repo/actions/runs/123",
     )
 
     message = notification.messages[0]
     embed = message.embeds[0]
-    text = message.content
 
-    # Embed is the header
-    assert "Review Needed" in embed.title
+    # Content is None (reserved for role mentions only)
+    assert message.content is None
+
+    # Embed metadata
+    assert "Review" in embed.title or "review" in embed.title
+    assert embed.author is not None
+    assert embed.author.name == "robbykapua"
     assert embed.footer is not None
+    assert embed.timestamp
 
-    # Content is plain text
-    assert "### Needs Review" in text
-    assert "[Needs Review](https://courses.example/review-me)" in text
-    assert "[Professor Approval](https://courses.example/professor)" in text
-    assert "### Published" in text
-    # Review items deduped from published
-    assert text.count("https://courses.example/review-me") == 1
-    assert "Action Log" in text
+    # Description has branch info
+    assert "`main`" in embed.description
+
+    # Fields: review items + deployed items
+    assert len(embed.fields) == 2
+
+    review_field = embed.fields[0]
+    assert "Needs review" in review_field.name
+    assert "(2)" in review_field.name
+    assert "Needs Review" in review_field.value
+    assert "Professor Approval" in review_field.value
+
+    deployed_field = embed.fields[1]
+    assert "Deployed" in deployed_field.name
+    # Review items deduped from deployed
+    assert "https://courses.example/review-me" not in deployed_field.value
+    assert "Week 12 Overview" in deployed_field.value
+    assert "Lab 8 Instructions" in deployed_field.value
 
 
 def test_canvas_notification_with_error():
@@ -67,9 +82,11 @@ def test_canvas_notification_with_error():
     )
 
     message = notification.messages[0]
-    assert "Error" in message.embeds[0].title
-    assert "### Errors" in message.content
-    assert "RuntimeError: boom" in message.content
+    embed = message.embeds[0]
+
+    assert "failed" in embed.title
+    assert "RuntimeError: boom" in embed.description
+    assert message.content is None
 
 
 def test_docker_notification_with_failures():
@@ -90,14 +107,21 @@ def test_docker_notification_with_failures():
 
     message = notification.messages[0]
     embed = message.embeds[0]
-    text = message.content
 
-    assert "Failures" in embed.title
-    assert "### Built" in text
-    assert "`lab-1`" in text
-    assert "`lab-2`" in text
-    assert "### Failed" in text
-    assert "`project-base`" in text
+    assert message.content is None
+    assert "failures" in embed.title.lower()
+
+    # Failed field first, then built
+    assert len(embed.fields) == 2
+
+    failed_field = embed.fields[0]
+    assert "Failed" in failed_field.name
+    assert "`project-base`" in failed_field.value
+
+    built_field = embed.fields[1]
+    assert "Built" in built_field.name
+    assert "`lab-1`" in built_field.value
+    assert "`lab-2`" in built_field.value
 
 
 def test_docker_notification_with_error():
@@ -123,6 +147,8 @@ def test_docker_notification_with_error():
     )
 
     message = notification.messages[0]
-    assert "Error" in message.embeds[0].title
-    assert "### Errors" in message.content
-    assert "ValueError: bad image" in message.content
+    embed = message.embeds[0]
+
+    assert "failed" in embed.title.lower()
+    assert "ValueError: bad image" in embed.description
+    assert message.content is None

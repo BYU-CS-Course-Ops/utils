@@ -1,9 +1,22 @@
-from notifications.formatting.formatting_utils import get_course_style, truncate_error
+from datetime import datetime, timezone
+
+from notifications.formatting.formatting_utils import (
+    emoji_for,
+    get_course_style,
+    truncate_error,
+)
 from notifications.formatting.plain_text_utils import (
     dedupe_remaining_content,
     status_color,
 )
-from notifications.resources import Notification, WebhookMessage, Embed, Footer
+from notifications.resources import (
+    Author,
+    Embed,
+    Field,
+    Footer,
+    Notification,
+    WebhookMessage,
+)
 
 
 def has_content(data) -> bool:
@@ -18,45 +31,12 @@ def requires_review(data) -> bool:
     return bool(data["content_to_review"] or data["error"])
 
 
-def _build_plain_text(data, course_name, course_url, author, branch, action_url):
-    sections = []
-
-    # --- Status ---
-    deployed_count = len(data["deployed_content"])
-    review_count = len(data["content_to_review"])
-
-    if data["error"]:
-        sections.append(f"A publishing error was reported. {deployed_count} item(s) deployed.")
-    elif review_count:
-        sections.append(f"{review_count} item(s) need review. {deployed_count} item(s) deployed.")
-    else:
-        sections.append(f"{deployed_count} item(s) deployed successfully.")
-
-    # --- Needs Review ---
-    if data["content_to_review"]:
-        lines = [f"- [{name}]({link})" for name, link in data["content_to_review"]]
-        sections.append("### Needs Review\n" + "\n".join(lines))
-
-    # --- Published (deduped) ---
-    remaining = dedupe_remaining_content(data["deployed_content"], data["content_to_review"])
-    if remaining:
-        lines = []
-        for label, url in remaining:
-            if url:
-                lines.append(f"- [{label}]({url})")
-            else:
-                lines.append(f"- {label}")
-        sections.append("### Published\n" + "\n".join(lines))
-
-    # --- Errors ---
-    if data["error"]:
-        truncated = truncate_error(data["error"])
-        sections.append(f"### Errors\n{truncated}")
-
-    # --- Metadata footer ---
-    sections.append(f"-# {author} | `{branch}` | [{course_name}]({course_url}) | [Action Log]({action_url})")
-
-    return "\n\n".join(sections)
+def _format_item(resource_type: str, name: str, link: str | None) -> str:
+    emoji = emoji_for(resource_type)
+    label = f"`{resource_type}`"
+    if link:
+        return f"{emoji} {label} [{name}]({link})"
+    return f"{emoji} {label} {name}"
 
 
 def format_notification(
@@ -70,30 +50,76 @@ def format_notification(
     action_url,
 ) -> Notification:
     style = get_course_style("canvas")
+    timestamp = datetime.now(timezone.utc).isoformat()
 
-    title = "Canvas Deploy"
+    # ── Title ────────────────────────────────────────────────────────────
     if data["error"]:
-        title = "Canvas Deploy -- Error"
+        title = f"{course_name} — Deploy failed"
     elif data["content_to_review"]:
-        title = "Canvas Deploy -- Review Needed"
+        title = f"{course_name} — Deploy complete — items need review"
+    else:
+        title = f"{course_name} — Deploy complete"
 
-    color = status_color(has_error=bool(data["error"]), needs_review=requires_review(data))
-    plain_text = _build_plain_text(data, course_name, course_url, author, branch, action_url)
+    # ── Color ────────────────────────────────────────────────────────────
+    color = status_color(
+        has_error=bool(data["error"]),
+        needs_review=requires_review(data),
+    )
 
+    # ── Description ──────────────────────────────────────────────────────
+    description = f"**Branch:** `{branch}`"
+
+    if data["error"]:
+        truncated = truncate_error(data["error"])
+        description += f"\n\n{truncated}"
+
+    # ── Fields ───────────────────────────────────────────────────────────
+    fields = []
+
+    if data["content_to_review"]:
+        review_lines = "\n".join(
+            _format_item("Assignment", name, link)
+            for name, link in data["content_to_review"]
+        )
+        fields.append(Field(
+            name=f"⚠️  Needs review ({len(data['content_to_review'])})",
+            value=review_lines,
+            inline=False,
+        ))
+
+    remaining = dedupe_remaining_content(
+        data["deployed_content"], data["content_to_review"]
+    )
+    if remaining:
+        deployed_lines = "\n".join(
+            _format_item(content_type, name, url)
+            for content_type, name, url in remaining
+        )
+        fields.append(Field(
+            name=f"✅  Deployed ({len(remaining)})",
+            value=deployed_lines,
+            inline=False,
+        ))
+
+    # ── Build notification ───────────────────────────────────────────────
     return Notification(
         username=style["username"],
         avatar_url=style["avatar_url"],
         messages=[
             WebhookMessage(
-                content=plain_text,
+                content=None,
                 embeds=[
                     Embed(
                         title=f"CS {course_id} | {title}",
-                        description="",
+                        description=description,
                         color=color,
-                        fields=[],
-                        timestamp="",
-                        footer=Footer(text=style["footer_text"], icon_url=style["footer_icon_url"]),
+                        fields=fields,
+                        timestamp=timestamp,
+                        author=Author(name=author, icon_url=author_icon),
+                        footer=Footer(
+                            text=style["footer_text"],
+                            icon_url=style["footer_icon_url"],
+                        ),
                     )
                 ],
             )

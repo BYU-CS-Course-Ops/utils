@@ -58,6 +58,7 @@ runs:
             --course-name "${{ inputs.course-name }}" \
             --course-url "${{ inputs.course-url }}" \
             --author "${{ github.actor }}" \
+            --author-icon "https://github.com/${{ github.actor }}.png" \
             --branch "${{ github.ref_name }}" \
             --cicd-id "${{ inputs.discord-role }}" \
             --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

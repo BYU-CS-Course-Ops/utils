@@ -1,6 +1,21 @@
 from markdowndata import load
 from pathlib import Path
 
+# ── Resource type badge emoji mapping ────────────────────────────────────────
+RESOURCE_EMOJI: dict[str, str] = {
+    "Page":        "📄",
+    "Quiz":        "📝",
+    "Assignment":  "📎",
+    "Module":      "📦",
+    "Discussion":  "💬",
+    "File":        "📁",
+    "ExternalUrl": "🔗",
+}
+
+
+def emoji_for(resource_type: str) -> str:
+    return RESOURCE_EMOJI.get(resource_type, "📌")
+
 STYLE_PATH = Path(__file__).parent / "style.md"
 
 
