@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
 from tabulate import tabulate
@@ -46,11 +46,12 @@ def _build_overview_table(deployed_content: list, content_to_review: list) -> st
     return f"```\n{table}\n```"
 
 
-def _format_item(resource_type: str, name: str, link: str | None) -> str:
+def _format_item(resource_type: str, name: str, max_len: int, link: str | None) -> str:
     label = f"`{resource_type}`"
     if link:
-        return f"{label:<3} [{name}]({link})"
-    return f"{label:<3} {name}"
+        link = f"[{name}]({link})"
+        return f"{label:{max_len}} {link:<3}"
+    return f"{label:{max_len}} {name:<3}"
 
 
 def _add_items_to_builder(
@@ -166,6 +167,13 @@ def format_notification(
             messages=[mb.build()],
         )
 
+    # -- Calculate max resource type length for formatting ---------------------------------------------
+    grouped = defaultdict(int)
+    for rtype, _, _ in data["deployed_content"]:
+        grouped[rtype] += 1
+
+    max_len = max(len(rtype) for rtype in grouped)
+
     # -- Overview table -------------------------------------------------------
     if data["deployed_content"] or data["content_to_review"]:
         table = _build_overview_table(data["deployed_content"], data["content_to_review"])
@@ -174,8 +182,8 @@ def format_notification(
     # -- Needs review items ---------------------------------------------------
     if data["content_to_review"]:
         lines = [
-            _format_item("assignment", name, link)
-            for name, link in data["content_to_review"]
+            _format_item(content_type, name, max_len, url)
+            for content_type, name, url in data["content_to_review"]
         ]
         header = f"Needs review ({len(data['content_to_review'])})"
         eb = _add_items_to_builder(
@@ -188,7 +196,7 @@ def format_notification(
     )
     if remaining:
         lines = [
-            _format_item(content_type, name, url)
+            _format_item(content_type, name, max_len, url)
             for content_type, name, url in remaining
         ]
         header = f"Remaining Resources ({len(remaining)})"
