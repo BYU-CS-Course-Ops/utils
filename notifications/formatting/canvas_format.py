@@ -42,15 +42,15 @@ def _build_overview_table(deployed_content: list, content_to_review: list) -> st
             type_counts["assignment"] += 1
 
     rows = sorted(type_counts.items(), key=lambda r: (-r[1], r[0]))
-    table = tabulate(rows, headers=["Resource Type", "Count"], tablefmt="pipe")
+    table = tabulate(rows, headers=["Resource Type", "Count"], tablefmt="presto")
     return f"```\n{table}\n```"
 
 
 def _format_item(resource_type: str, name: str, link: str | None) -> str:
     label = f"`{resource_type}`"
     if link:
-        return f"{label} [{name}]({link})"
-    return f"{label} {name}"
+        return f"{label:<3} [{name}]({link})"
+    return f"{label:<3} {name}"
 
 
 def _add_items_to_builder(
