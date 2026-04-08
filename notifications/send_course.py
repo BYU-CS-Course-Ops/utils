@@ -7,8 +7,8 @@ from .send_notification import send_notification
 
 
 FORMATTERS = {
-    "canvas": (canvas_format.format_notification, canvas_format.has_content, canvas_format.requires_review),
-    "docker": (docker_format.format_notification, docker_format.has_content, docker_format.requires_review),
+    "canvas": (canvas_format.format_notification, canvas_format.has_content),
+    "docker": (docker_format.format_notification, docker_format.has_content),
 }
 
 
@@ -20,7 +20,7 @@ def main(ntype, payload, course_id, course_name, course_url, author, author_icon
     if ntype not in FORMATTERS:
         raise ValueError("Invalid notification type. Use 'canvas' or 'docker'.")
 
-    format_notification, has_content, requires_review = FORMATTERS[ntype]
+    format_notification, has_content = FORMATTERS[ntype]
 
     with open(payload, 'r') as file:
         data = json.load(file)
@@ -38,10 +38,8 @@ def main(ntype, payload, course_id, course_name, course_url, author, author_icon
         author_icon=author_icon or "",
         branch=branch_name,
         action_url=action_url,
+        cicd_role_id=cicd_role_id,
     )
-
-    if requires_review(data) and cicd_role_id and notification.messages:
-        notification.messages[0].content = f"<@&{cicd_role_id}>"
 
     send_notification(webhook_url, notification)
 

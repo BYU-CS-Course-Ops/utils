@@ -1,154 +1,196 @@
 from notifications.formatting.canvas_format import format_notification as format_canvas_notification
 from notifications.formatting.docker_format import format_notification as format_docker_notification
+from notifications.discord_limits import validate_notification
 
 
-def test_canvas_notification_with_review_items():
-    notification = format_canvas_notification(
-        data={
-            "deployed_content": [
-                ("Page", "Week 12 Overview", "https://courses.example/week-12"),
-                ("Page", "Lab 8 Instructions", "https://courses.example/lab-8"),
-                ("Assignment", "Project Milestone", "https://courses.example/project"),
-                ("Page", "Needs Review", "https://courses.example/review-me"),
-            ],
-            "content_to_review": [
-                ("Needs Review", "https://courses.example/review-me"),
-                ("Professor Approval", "https://courses.example/professor"),
-            ],
-            "error": "",
-        },
-        course_id="235",
-        course_name="CS 235 Spring 2026",
-        course_url="https://courses.example/cs235",
-        author="robbykapua",
-        author_icon="https://github.com/robbykapua.png",
-        branch="main",
-        action_url="https://github.com/testkapua/testing-repo/actions/runs/123",
-    )
+class TestCanvasNotificationSuccess:
+    def test_success_has_overview_table(self):
+        notification = format_canvas_notification(
+            data={
+                "deployed_content": [
+                    ("page", "Week 12 Overview", "https://courses.example/week-12"),
+                    ("page", "Lab 8 Instructions", "https://courses.example/lab-8"),
+                    ("assignment", "Project Milestone", "https://courses.example/project"),
+                ],
+                "content_to_review": [],
+                "error": "",
+            },
+            course_id="235",
+            course_name="CS 235 Spring 2026",
+            course_url="https://courses.example/cs235",
+            author="robbykapua",
+            author_icon="https://github.com/robbykapua.png",
+            branch="main",
+            action_url="https://github.com/actions/runs/123",
+        )
+        message = notification.messages[0]
+        embed = message.embeds[0]
 
-    message = notification.messages[0]
-    embed = message.embeds[0]
+        assert message.content is None
+        assert "Deploy complete" in embed.title
+        assert "`main`" in embed.description
+        assert embed.author is not None
+        assert embed.footer is not None
 
-    # Content is None (reserved for role mentions only)
-    assert message.content is None
+        # First field is overview table
+        overview = embed.fields[0]
+        assert "Over View" in overview.name
+        assert "page" in overview.value
+        assert "assignment" in overview.value
 
-    # Embed metadata
-    assert "Review" in embed.title or "review" in embed.title
-    assert embed.author is not None
-    assert embed.author.name == "robbykapua"
-    assert embed.footer is not None
-    assert embed.timestamp
+        # Remaining resources field follows
+        remaining = embed.fields[1]
+        assert "Remaining Resources" in remaining.name
+        assert "Week 12 Overview" in remaining.value
 
-    # Description has branch info
-    assert "`main`" in embed.description
-
-    # Fields: review items + deployed items
-    assert len(embed.fields) == 2
-
-    review_field = embed.fields[0]
-    assert "Needs review" in review_field.name
-    assert "(2)" in review_field.name
-    assert "Needs Review" in review_field.value
-    assert "Professor Approval" in review_field.value
-
-    deployed_field = embed.fields[1]
-    assert "Deployed" in deployed_field.name
-    # Review items deduped from deployed
-    assert "https://courses.example/review-me" not in deployed_field.value
-    assert "Week 12 Overview" in deployed_field.value
-    assert "Lab 8 Instructions" in deployed_field.value
+        assert validate_notification(notification) == []
 
 
-def test_canvas_notification_with_error():
-    notification = format_canvas_notification(
-        data={
-            "deployed_content": [],
-            "content_to_review": [],
-            "error": "\n".join([
-                "prefix noise",
-                "Traceback (most recent call last):",
-                '  File "runner.py", line 1, in <module>',
-                "    raise RuntimeError('boom')",
-                "RuntimeError: boom",
-            ]),
-        },
-        course_id="235",
-        course_name="CS 235 Spring 2026",
-        course_url="https://courses.example/cs235",
-        author="robbykapua",
-        author_icon="",
-        branch="main",
-        action_url="https://github.com/testkapua/testing-repo/actions/runs/123",
-    )
+class TestCanvasNotificationReview:
+    def test_review_has_content_ping_and_review_section(self):
+        notification = format_canvas_notification(
+            data={
+                "deployed_content": [
+                    ("page", "Week 12 Overview", "https://courses.example/week-12"),
+                    ("assignment", "Needs Review", "https://courses.example/review-me"),
+                ],
+                "content_to_review": [
+                    ("Needs Review", "https://courses.example/review-me"),
+                    ("Professor Approval", "https://courses.example/professor"),
+                ],
+                "error": "",
+            },
+            course_id="235",
+            course_name="CS 235 Spring 2026",
+            course_url="https://courses.example/cs235",
+            author="robbykapua",
+            author_icon="https://github.com/robbykapua.png",
+            branch="main",
+            action_url="https://github.com/actions/runs/123",
+            cicd_role_id="123456",
+        )
+        message = notification.messages[0]
+        embed = message.embeds[0]
 
-    message = notification.messages[0]
-    embed = message.embeds[0]
+        assert "<@&123456>" in message.content
+        assert "review" in embed.title.lower()
 
-    assert "failed" in embed.title
-    assert "RuntimeError: boom" in embed.description
-    assert message.content is None
+        # Has overview, needs review, and remaining fields
+        field_names = [f.name for f in embed.fields]
+        assert any("Over View" in n for n in field_names)
+        assert any("Needs review" in n for n in field_names)
+        assert any("Remaining Resources" in n for n in field_names)
 
+        # Review items present
+        review_field = next(f for f in embed.fields if "Needs review" in f.name)
+        assert "Needs Review" in review_field.value
+        assert "Professor Approval" in review_field.value
 
-def test_docker_notification_with_failures():
-    notification = format_docker_notification(
-        data={
-            "updated_images": ["lab-1", "lab-2"],
-            "failed_images": ["project-base"],
-            "error": "",
-        },
-        course_id="235",
-        course_name="CS 235 Spring 2026",
-        course_url="https://courses.example/cs235",
-        author="robbykapua",
-        author_icon="",
-        branch="main",
-        action_url="https://github.com/testkapua/testing-repo/actions/runs/123",
-    )
+        # Deduplication: review item not in remaining
+        remaining_field = next(f for f in embed.fields if "Remaining Resources" in f.name)
+        assert "https://courses.example/review-me" not in remaining_field.value
+        assert "Week 12 Overview" in remaining_field.value
 
-    message = notification.messages[0]
-    embed = message.embeds[0]
-
-    assert message.content is None
-    assert "failures" in embed.title.lower()
-
-    # Failed field first, then built
-    assert len(embed.fields) == 2
-
-    failed_field = embed.fields[0]
-    assert "Failed" in failed_field.name
-    assert "`project-base`" in failed_field.value
-
-    built_field = embed.fields[1]
-    assert "Built" in built_field.name
-    assert "`lab-1`" in built_field.value
-    assert "`lab-2`" in built_field.value
+        assert validate_notification(notification) == []
 
 
-def test_docker_notification_with_error():
-    notification = format_docker_notification(
-        data={
-            "updated_images": [],
-            "failed_images": ["project-base"],
-            "error": "\n".join([
-                "build logs",
-                "Traceback (most recent call last):",
-                '  File "docker.py", line 10, in <module>',
-                "    raise ValueError('bad image')",
-                "ValueError: bad image",
-            ]),
-        },
-        course_id="235",
-        course_name="CS 235 Spring 2026",
-        course_url="https://courses.example/cs235",
-        author="robbykapua",
-        author_icon="",
-        branch="main",
-        action_url="https://github.com/testkapua/testing-repo/actions/runs/123",
-    )
+class TestCanvasNotificationError:
+    def test_error_has_content_ping_and_error_in_description(self):
+        notification = format_canvas_notification(
+            data={
+                "deployed_content": [],
+                "content_to_review": [],
+                "error": "\n".join([
+                    "prefix noise",
+                    "Traceback (most recent call last):",
+                    '  File "runner.py", line 1, in <module>',
+                    "    raise RuntimeError('boom')",
+                    "RuntimeError: boom",
+                ]),
+            },
+            course_id="235",
+            course_name="CS 235 Spring 2026",
+            course_url="https://courses.example/cs235",
+            author="robbykapua",
+            author_icon="",
+            branch="main",
+            action_url="https://github.com/actions/runs/123",
+            cicd_role_id="123456",
+        )
+        message = notification.messages[0]
+        embed = message.embeds[0]
 
-    message = notification.messages[0]
-    embed = message.embeds[0]
+        assert "failed" in embed.title.lower()
+        assert "RuntimeError: boom" in embed.description
+        assert "<@&123456>" in message.content
+        assert "ERROR" in message.content
+        assert embed.fields == []
 
-    assert "failed" in embed.title.lower()
-    assert "ValueError: bad image" in embed.description
-    assert message.content is None
+        assert validate_notification(notification) == []
+
+
+class TestDockerNotificationFailures:
+    def test_docker_with_failures(self):
+        notification = format_docker_notification(
+            data={
+                "updated_images": ["lab-1", "lab-2"],
+                "failed_images": ["project-base"],
+                "error": "",
+            },
+            course_id="235",
+            course_name="CS 235 Spring 2026",
+            course_url="https://courses.example/cs235",
+            author="robbykapua",
+            author_icon="",
+            branch="main",
+            action_url="https://github.com/actions/runs/123",
+        )
+        message = notification.messages[0]
+        embed = message.embeds[0]
+
+        assert message.content is None
+        assert "failures" in embed.title.lower()
+        assert len(embed.fields) == 2
+
+        failed_field = embed.fields[0]
+        assert "Failed" in failed_field.name
+        assert "`project-base`" in failed_field.value
+
+        built_field = embed.fields[1]
+        assert "Built" in built_field.name
+        assert "`lab-1`" in built_field.value
+        assert "`lab-2`" in built_field.value
+
+        assert validate_notification(notification) == []
+
+
+class TestDockerNotificationError:
+    def test_docker_with_error(self):
+        notification = format_docker_notification(
+            data={
+                "updated_images": [],
+                "failed_images": ["project-base"],
+                "error": "\n".join([
+                    "build logs",
+                    "Traceback (most recent call last):",
+                    '  File "docker.py", line 10, in <module>',
+                    "    raise ValueError('bad image')",
+                    "ValueError: bad image",
+                ]),
+            },
+            course_id="235",
+            course_name="CS 235 Spring 2026",
+            course_url="https://courses.example/cs235",
+            author="robbykapua",
+            author_icon="",
+            branch="main",
+            action_url="https://github.com/actions/runs/123",
+        )
+        message = notification.messages[0]
+        embed = message.embeds[0]
+
+        assert "failed" in embed.title.lower()
+        assert "ValueError: bad image" in embed.description
+        assert message.content is None
+
+        assert validate_notification(notification) == []

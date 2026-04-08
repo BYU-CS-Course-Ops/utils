@@ -1,22 +1,16 @@
 from datetime import datetime, timezone
 
-from notifications.formatting.formatting_utils import chunk_field_lines, get_course_style, truncate_error
+from notifications.discord_limits import EmbedBuilder, MessageBuilder
+from notifications.formatting.formatting_utils import get_course_style, truncate_error
 from notifications.formatting.plain_text_utils import status_color
-from notifications.resources import (
-    Author,
-    Embed,
-    Field,
-    Footer,
-    Notification,
-    WebhookMessage,
-)
+from notifications.resources import Author, Footer, Notification
 
 
 def has_content(data) -> bool:
     return bool(
-        data['updated_images']
-        or data['failed_images']
-        or data['error']
+        data["updated_images"]
+        or data["failed_images"]
+        or data["error"]
     )
 
 
@@ -33,85 +27,54 @@ def format_notification(
     author_icon,
     branch,
     action_url,
+    cicd_role_id=None,
 ) -> Notification:
     style = get_course_style("docker")
     timestamp = datetime.now(timezone.utc).isoformat()
+    footer = Footer(text=style["footer_text"], icon_url=style["footer_icon_url"])
+    author_obj = Author(name=author, icon_url=author_icon)
 
-    # ── Title ────────────────────────────────────────────────────────────
+    # -- Title ----------------------------------------------------------------
     if data["error"]:
-        title = f"{course_name} — Build failed"
+        title = f"CS {course_id} | {course_name} -- Build failed"
     elif data["failed_images"]:
-        title = f"{course_name} — Build complete — failures"
+        title = f"CS {course_id} | {course_name} -- Build complete -- failures"
     else:
-        title = f"{course_name} — Build complete"
+        title = f"CS {course_id} | {course_name} -- Build complete"
 
-    # ── Color ────────────────────────────────────────────────────────────
+    # -- Color ----------------------------------------------------------------
     color = status_color(
         has_error=bool(data["error"]),
         needs_review=requires_review(data),
     )
 
-    # ── Description ──────────────────────────────────────────────────────
+    # -- Description ----------------------------------------------------------
     description = f"**Branch:** `{branch}`"
-
     if data["error"]:
         truncated = truncate_error(data["error"])
         description += f"\n\n{truncated}"
 
-    # ── Fields ───────────────────────────────────────────────────────────
-    SPACER = [
-        Field(name="\u200b", value="\u200b", inline=False),
-        Field(name="\u200b", value="\u200b", inline=False),
-    ]
-    fields = []
+    # -- Build message --------------------------------------------------------
+    mb = MessageBuilder(color=color, timestamp=timestamp)
+    eb = mb.new_embed(
+        title=title,
+        description=description,
+        author=author_obj,
+        footer=footer,
+    )
 
     if data["failed_images"]:
-        lines = [f"> ❌ `{image}`" for image in data["failed_images"]]
-        chunks = chunk_field_lines(lines)
-        header = f"❌  Failed ({len(data['failed_images'])})"
-        if fields:
-            fields.extend(SPACER)
-        for i, chunk in enumerate(chunks):
-            fields.append(Field(
-                name=header if i == 0 else "\u200b",
-                value=chunk,
-                inline=False,
-            ))
+        lines = [f"`{image}`" for image in data["failed_images"]]
+        value = "\n".join(lines)
+        eb.add_field(f"Failed ({len(data['failed_images'])})", value, inline=False)
 
     if data["updated_images"]:
-        lines = [f"> 📦 `{image}`" for image in data["updated_images"]]
-        chunks = chunk_field_lines(lines)
-        header = f"✅  Built ({len(data['updated_images'])})"
-        if fields:
-            fields.extend(SPACER)
-        for i, chunk in enumerate(chunks):
-            fields.append(Field(
-                name=header if i == 0 else "\u200b",
-                value=chunk,
-                inline=False,
-            ))
+        lines = [f"`{image}`" for image in data["updated_images"]]
+        value = "\n".join(lines)
+        eb.add_field(f"Built ({len(data['updated_images'])})", value, inline=False)
 
-    # ── Build notification ───────────────────────────────────────────────
     return Notification(
         username=style["username"],
         avatar_url=style["avatar_url"],
-        messages=[
-            WebhookMessage(
-                content=None,
-                embeds=[
-                    Embed(
-                        title=f"CS {course_id} | {title}",
-                        description=description,
-                        color=color,
-                        fields=fields,
-                        timestamp=timestamp,
-                        author=Author(name=author, icon_url=author_icon),
-                        footer=Footer(
-                            text=style["footer_text"],
-                            icon_url=style["footer_icon_url"],
-                        ),
-                    )
-                ],
-            )
-        ],
+        messages=[mb.build()],
     )
