@@ -300,3 +300,119 @@ class TestValidateNotification:
         )
         violations = validate_notification(notification)
         assert any("embed count" in v.lower() for v in violations)
+
+
+import json
+from pathlib import Path
+
+from notifications.formatting.canvas_format import format_notification
+
+
+class TestIntegrationWithRealPayload:
+    @staticmethod
+    def _load_payload():
+        path = Path(__file__).parent / "test-mdxcanvas-payload.json"
+        with open(path) as f:
+            return json.load(f)
+
+    def test_success_case_passes_all_limits(self):
+        data = self._load_payload()
+        notification = format_notification(
+            data=data,
+            course_id="110",
+            course_name="CS 110 Course Updates",
+            course_url="https://byu.instructure.com/courses/20736",
+            author="robbykap",
+            author_icon="https://github.com/robbykap.png",
+            branch="main",
+            action_url="https://github.com/actions/runs/1",
+        )
+        violations = validate_notification(notification)
+        assert violations == [], f"Limit violations: {violations}"
+
+    def test_review_case_passes_all_limits(self):
+        data = self._load_payload()
+        data["content_to_review"] = [
+            ("lab-notebook-week1", "https://byu.instructure.com/courses/20736/assignments/1332409"),
+            ("group-presentation", "https://byu.instructure.com/courses/20736/assignments/1332413"),
+        ]
+        notification = format_notification(
+            data=data,
+            course_id="110",
+            course_name="CS 110 Course Updates",
+            course_url="https://byu.instructure.com/courses/20736",
+            author="robbykap",
+            author_icon="https://github.com/robbykap.png",
+            branch="main",
+            action_url="https://github.com/actions/runs/1",
+            cicd_role_id="999888777",
+        )
+        violations = validate_notification(notification)
+        assert violations == [], f"Limit violations: {violations}"
+
+    def test_error_case_passes_all_limits(self):
+        data = {
+            "deployed_content": [],
+            "content_to_review": [],
+            "error": "SONDecodeError: Expecting value: line 1 column 1 (char 0)",
+        }
+        notification = format_notification(
+            data=data,
+            course_id="110",
+            course_name="CS 110 Course Updates",
+            course_url="https://byu.instructure.com/courses/20736",
+            author="robbykap",
+            author_icon="",
+            branch="main",
+            action_url="https://github.com/actions/runs/1",
+            cicd_role_id="999888777",
+        )
+        violations = validate_notification(notification)
+        assert violations == [], f"Limit violations: {violations}"
+
+    def test_overview_table_has_correct_type_count(self):
+        data = self._load_payload()
+        notification = format_notification(
+            data=data,
+            course_id="110",
+            course_name="CS 110 Course Updates",
+            course_url="https://byu.instructure.com/courses/20736",
+            author="robbykap",
+            author_icon="",
+            branch="main",
+            action_url="https://github.com/actions/runs/1",
+        )
+        overview_field = notification.messages[0].embeds[0].fields[0]
+        for resource_type in ["module", "assignment", "quiz", "page"]:
+            assert resource_type in overview_field.value
+
+    def test_massive_payload_passes_all_limits(self):
+        data = {
+            "deployed_content": [
+                ("page", f"page-{i}", f"https://example.com/pages/{i}")
+                for i in range(500)
+            ],
+            "content_to_review": [],
+            "error": "",
+        }
+        notification = format_notification(
+            data=data,
+            course_id="110",
+            course_name="CS 110 Course Updates",
+            course_url="https://byu.instructure.com/courses/20736",
+            author="robbykap",
+            author_icon="",
+            branch="main",
+            action_url="https://github.com/actions/runs/1",
+        )
+        violations = validate_notification(notification)
+        assert violations == [], f"Limit violations: {violations}"
+
+    def test_empty_payload_has_no_content(self):
+        from notifications.formatting.canvas_format import has_content
+        data = {
+            "deployed_content": [],
+            "content_to_review": [],
+            "error": "",
+        }
+        assert has_content(data) is False
