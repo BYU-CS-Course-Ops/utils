@@ -88,7 +88,7 @@ class EmbedBuilder:
         if len(self._fields) >= FIELDS_PER_EMBED:
             return False
         field_size = len(name or "") + len(value or "")
-        return self._fields_size + field_size <= self.remaining_chars()
+        return field_size <= self.remaining_chars()
 
     def add_field(self, name: str, value: str, inline: bool = False) -> bool:
         if not self.can_add_field(name, value):
