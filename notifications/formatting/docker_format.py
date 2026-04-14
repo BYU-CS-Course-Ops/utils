@@ -112,6 +112,9 @@ def format_notification(
 
     # -- Build message --------------------------------------------------------
     mb = MessageBuilder(color=color, timestamp=timestamp)
+    if content:
+        mb.set_content(content)
+
     eb = mb.new_embed(
         title=title,
         description=description,
