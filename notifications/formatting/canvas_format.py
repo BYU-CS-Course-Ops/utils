@@ -36,10 +36,10 @@ def _build_overview_table(deployed_content: list, content_to_review: list) -> st
             seen.add(name)
             type_counts[content_type] += 1
 
-    for name, *_ in content_to_review:
+    for content_type, name, *_ in content_to_review:
         if name not in seen:
             seen.add(name)
-            type_counts["assignment"] += 1
+            type_counts[content_type] += 1
 
     rows = sorted(type_counts.items(), key=lambda r: (-r[1], r[0]))
     table = tabulate(rows, headers=["Resource Type", "Count"], tablefmt="presto")
@@ -159,20 +159,12 @@ def format_notification(
         footer=footer,
     )
 
-    # Error case: no fields, just the error in description
-    if data["error"]:
-        return Notification(
-            username=style["username"],
-            avatar_url=style["avatar_url"],
-            messages=[mb.build()],
-        )
-
     # -- Calculate max resource type length for formatting ---------------------------------------------
     grouped = defaultdict(int)
     for rtype, _, _ in data["deployed_content"]:
         grouped[rtype] += 1
 
-    max_len = max(len(rtype) for rtype in grouped)
+    max_len = max((len(rtype) for rtype in grouped), default=0)
 
     # -- Overview table -------------------------------------------------------
     if data["deployed_content"] or data["content_to_review"]:
@@ -185,8 +177,8 @@ def format_notification(
             _format_item(content_type, name, max_len, url)
             for content_type, name, url in data["content_to_review"]
         ]
-        header = f"Needs review ({len(data['content_to_review'])})"
-        eb = _add_items_to_builder(
+        header = f"Needs Review ({len(data['content_to_review'])})"
+        _add_items_to_builder(
             eb, mb, header, lines, author_obj, footer, continuation_title,
         )
 
@@ -200,12 +192,12 @@ def format_notification(
             for content_type, name, url in remaining
         ]
         header = f"Remaining Resources ({len(remaining)})"
-        eb = _add_items_to_builder(
+        _add_items_to_builder(
             eb, mb, header, lines, author_obj, footer, continuation_title,
         )
 
     return Notification(
         username=style["username"],
         avatar_url=style["avatar_url"],
-        messages=[mb.build()],
+        messages=mb.build(),
     )

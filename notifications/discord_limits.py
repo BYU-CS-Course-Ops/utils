@@ -143,11 +143,38 @@ class MessageBuilder:
         self._embeds.append(eb)
         return eb
 
-    def build(self) -> WebhookMessage:
-        return WebhookMessage(
-            content=self._content,
-            embeds=[eb.build() for eb in self._embeds],
-        )
+    def build(self) -> list[WebhookMessage]:
+        """Build webhook messages, grouping embeds so each message's
+        combined embed character total stays within EMBED_CHAR_LIMIT
+        and each message has at most MAX_EMBEDS_PER_MESSAGE embeds."""
+        built_embeds = [eb.build() for eb in self._embeds]
+        messages: list[WebhookMessage] = []
+        current_embeds: list[Embed] = []
+        current_size = 0
+
+        for embed in built_embeds:
+            embed_size = calc_embed_size(embed)
+            would_exceed_chars = current_embeds and current_size + embed_size > EMBED_CHAR_LIMIT
+            would_exceed_count = len(current_embeds) >= MAX_EMBEDS_PER_MESSAGE
+
+            if current_embeds and (would_exceed_chars or would_exceed_count):
+                messages.append(WebhookMessage(
+                    content=self._content if not messages else None,
+                    embeds=current_embeds,
+                ))
+                current_embeds = []
+                current_size = 0
+
+            current_embeds.append(embed)
+            current_size += embed_size
+
+        if current_embeds:
+            messages.append(WebhookMessage(
+                content=self._content if not messages else None,
+                embeds=current_embeds,
+            ))
+
+        return messages if messages else [WebhookMessage(content=self._content, embeds=[])]
 
 
 # -- validate_notification ----------------------------------------------------
@@ -211,5 +238,12 @@ def validate_notification(notification: Notification) -> list[str]:
                 violations.append(
                     f"{ep}: Embed char total {total} exceeds {EMBED_CHAR_LIMIT}"
                 )
+
+        # Combined embed size across all embeds in a single message
+        combined = sum(calc_embed_size(e) for e in message.embeds)
+        if combined > EMBED_CHAR_LIMIT:
+            violations.append(
+                f"{prefix}: Combined embed char total {combined} exceeds {EMBED_CHAR_LIMIT}"
+            )
 
     return violations

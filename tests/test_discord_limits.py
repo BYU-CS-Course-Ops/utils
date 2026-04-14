@@ -148,28 +148,56 @@ class TestMessageBuilder:
         mb = MessageBuilder(color=0xFF0000, timestamp="2025-01-01T00:00:00Z")
         eb = mb.new_embed(title="Title", description="Desc")
         eb.add_field("Key", "Value")
-        message = mb.build()
-        assert len(message.embeds) == 1
-        assert message.embeds[0].title == "Title"
+        messages = mb.build()
+        assert len(messages) == 1
+        assert len(messages[0].embeds) == 1
+        assert messages[0].embeds[0].title == "Title"
 
     def test_new_embed_creates_continuation(self):
         mb = MessageBuilder(color=0xFF0000, timestamp="2025-01-01T00:00:00Z")
         mb.new_embed(title="First", description="Desc")
         mb.new_embed(title="Second", description="")
-        message = mb.build()
-        assert len(message.embeds) == 2
+        messages = mb.build()
+        # Both small embeds should fit in one message
+        total_embeds = sum(len(m.embeds) for m in messages)
+        assert total_embeds == 2
 
     def test_set_content(self):
         mb = MessageBuilder(color=0, timestamp="")
         mb.set_content("hello world")
         mb.new_embed(title="T", description="D")
-        message = mb.build()
-        assert message.content == "hello world"
+        messages = mb.build()
+        assert messages[0].content == "hello world"
+
+    def test_content_only_on_first_message(self):
+        mb = MessageBuilder(color=0, timestamp="")
+        mb.set_content("hello world")
+        # Create two embeds that together exceed 6000 chars
+        mb.new_embed(title="T", description="x" * 5000)
+        mb.new_embed(title="T", description="x" * 5000)
+        messages = mb.build()
+        assert len(messages) == 2
+        assert messages[0].content == "hello world"
+        assert messages[1].content is None
 
     def test_current_embed_returns_active_builder(self):
         mb = MessageBuilder(color=0, timestamp="")
         eb = mb.new_embed(title="T", description="D")
         assert mb.current_embed is eb
+
+    def test_large_embeds_split_across_messages(self):
+        mb = MessageBuilder(color=0, timestamp="")
+        # Create 3 embeds each ~3000 chars — can't fit 2 in one message
+        for i in range(3):
+            mb.new_embed(title=f"E{i}", description="x" * 2990)
+        messages = mb.build()
+        assert len(messages) >= 2
+        for msg in messages:
+            combined = sum(
+                len(e.title or "") + len(e.description or "")
+                for e in msg.embeds
+            )
+            assert combined <= 6000
 
 
 class TestValidateNotification:
@@ -333,8 +361,8 @@ class TestIntegrationWithRealPayload:
     def test_review_case_passes_all_limits(self):
         data = self._load_payload()
         data["content_to_review"] = [
-            ("lab-notebook-week1", "https://byu.instructure.com/courses/20736/assignments/1332409"),
-            ("group-presentation", "https://byu.instructure.com/courses/20736/assignments/1332413"),
+            ("assignment", "lab-notebook-week1", "https://byu.instructure.com/courses/20736/assignments/1332409"),
+            ("assignment", "group-presentation", "https://byu.instructure.com/courses/20736/assignments/1332413"),
         ]
         notification = format_notification(
             data=data,

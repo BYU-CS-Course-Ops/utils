@@ -15,10 +15,10 @@ def status_color(*, has_error: bool, needs_review: bool) -> int:
 
 def dedupe_remaining_content(
     deployed_content: list[tuple[str, str, str | None]],
-    review_items: list[tuple[str, str]],
+    review_items: list[tuple[str, str, str | None]],
 ) -> list[tuple[str, str, str | None]]:
-    review_urls = {url for _, url in review_items if url}
-    review_labels = {label for label, _ in review_items}
+    review_urls = {url for _, _, url in review_items if url}
+    review_labels = {label for _, label, _ in review_items}
 
     seen_urls: set[str] = set()
     seen_labels: set[str] = set()

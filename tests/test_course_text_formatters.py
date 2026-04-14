@@ -55,8 +55,8 @@ class TestCanvasNotificationReview:
                     ("assignment", "Needs Review", "https://courses.example/review-me"),
                 ],
                 "content_to_review": [
-                    ("Needs Review", "https://courses.example/review-me"),
-                    ("Professor Approval", "https://courses.example/professor"),
+                    ("assignment", "Needs Review", "https://courses.example/review-me"),
+                    ("assignment", "Professor Approval", "https://courses.example/professor"),
                 ],
                 "error": "",
             },
