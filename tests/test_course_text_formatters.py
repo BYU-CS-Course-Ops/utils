@@ -34,7 +34,7 @@ class TestCanvasNotificationSuccess:
 
         # First field is overview table
         overview = embed.fields[0]
-        assert "Over View" in overview.name
+        assert "Overview" in overview.name
         assert "page" in overview.value
         assert "assignment" in overview.value
 
@@ -77,7 +77,7 @@ class TestCanvasNotificationReview:
 
         # Has overview, needs review, and remaining fields
         field_names = [f.name for f in embed.fields]
-        assert any("Over View" in n for n in field_names)
+        assert any("Overview" in n for n in field_names)
         assert any("Needs review" in n for n in field_names)
         assert any("Remaining Resources" in n for n in field_names)
 

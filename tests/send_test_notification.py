@@ -36,5 +36,5 @@ if __name__ == "__main__":
         author_icon="https://github.com/ghost.png",
         branch_name="test-branch",
         action_url="https://github.com/actions/runs/0",
-        cicd_role_id=None,
+        cicd_role_id=1373077186072019024,
     )

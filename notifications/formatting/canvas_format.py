@@ -169,7 +169,7 @@ def format_notification(
     # -- Overview table -------------------------------------------------------
     if data["deployed_content"] or data["content_to_review"]:
         table = _build_overview_table(data["deployed_content"], data["content_to_review"])
-        eb.add_field("Over View:", table, inline=False)
+        eb.add_field("Overview:", table, inline=False)
 
     # -- Needs review items ---------------------------------------------------
     if data["content_to_review"]:
