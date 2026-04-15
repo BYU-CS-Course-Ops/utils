@@ -22,6 +22,14 @@ def get_course_style(ntype: str) -> dict[str, str]:
     return {}
 
 
+def get_pypi_style(ntype: str) -> dict[str, str]:
+    styles = _load_styles()
+    for row in styles.get("PyPi Packages", []):
+        if row.get("type") == ntype:
+            return row
+    return {}
+
+
 def truncate_error(error: str, max_chars: int = 900) -> str:
     if not error:
         return "```\nNo error output available.\n```"
