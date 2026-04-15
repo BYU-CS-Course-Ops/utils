@@ -1,0 +1,5 @@
+{
+    "updated_images": [],
+    "failed_images": [],
+    "error": "JSONDecodeError('Expecting value: line 1 column 1 (char 0)')"
+}

@@ -1,0 +1,64 @@
+name: Send Course Notification
+description: Create fallback output if needed and send course notification to Discord
+
+inputs:
+  notification-type:
+    description: "Type of notification: 'canvas' or 'docker'"
+    required: true
+  output-type:
+    description: "Output type for fallback: 'MDXCanvas' or 'Docker'"
+    required: true
+  payload-path:
+    description: "Path to the output JSON file"
+    required: true
+  stdout-log:
+    description: "Path to stdout log file"
+    required: true
+  stderr-log:
+    description: "Path to stderr log file"
+    required: true
+  course-id:
+    description: "Course ID"
+    required: true
+  course-name:
+    description: "Course name"
+    required: true
+  course-url:
+    description: "Course URL"
+    required: true
+  discord-role:
+    description: "Discord CI/CD role ID"
+    required: true
+  discord-webhook-url:
+    description: "Discord webhook URL"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create fallback output if needed
+      shell: bash
+      run: |
+        PYTHONPATH=utils python -m notifications.fallback \
+            --output-type "${{ inputs.output-type }}" \
+            --output-path "${{ inputs.payload-path }}" \
+            --stdout-log "${{ inputs.stdout-log }}" \
+            --stderr-log "${{ inputs.stderr-log }}" \
+            --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+    - name: Send course notification to Discord
+      shell: bash
+      env:
+        DISCORD_WEBHOOK_URL: ${{ inputs.discord-webhook-url }}
+      run: |
+        PYTHONPATH=utils python -m notifications.send_course \
+            --type "${{ inputs.notification-type }}" \
+            --payload "${{ inputs.payload-path }}" \
+            --course-id "${{ inputs.course-id }}" \
+            --course-name "${{ inputs.course-name }}" \
+            --course-url "${{ inputs.course-url }}" \
+            --author "${{ github.actor }}" \
+            --author-icon "https://github.com/${{ github.actor }}.png" \
+            --branch "${{ github.ref_name }}" \
+            --cicd-id "${{ inputs.discord-role }}" \
+            --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

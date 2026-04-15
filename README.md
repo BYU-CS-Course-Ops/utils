@@ -13,6 +13,8 @@ jobs:
     uses: BYU-CS-Course-Ops/utils/.github/workflows/docker_automation.yaml@main
     with:
       course_id: "235"
+      course_name: "CS 235 Spring 2025"
+      course_url: "https://example.com/courses/cs235"
     secrets:
       discord_role: ${{ secrets.CICD_NOTIFY_DISCORD_ROLE }}
       docker_user: ${{ secrets.DOCKER_USER }}
@@ -35,6 +37,8 @@ jobs:
     uses: BYU-CS-Course-Ops/utils/.github/workflows/mdxcanvas_automation.yaml@main
     with:
       course_id: "235"
+      course_name: "CS 235 Spring 2025"
+      course_url: "https://example.com/courses/cs235"
       mdxcanvas_version: "0.3.0"
       course_info_path: "_canvas-material/course-info/cs235_sp2025.json"
       global_args_path: "_canvas-material/global_args.json"

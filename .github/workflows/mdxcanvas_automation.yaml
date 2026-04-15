@@ -6,6 +6,16 @@ on:
       course_id:
         required: true
         type: string
+      course_name:
+        required: true
+        type: string
+      course_url:
+        required: true
+        type: string
+      utils_ref:
+        required: false
+        default: main
+        type: string
       mdxcanvas_version:
         required: true
         type: string
@@ -43,7 +53,7 @@ jobs:
       OUTPUT_PATH: ${{ github.workspace }}/.github/logs/mdxcanvas_output.json
 
     steps:
-      - name: Checkout repos
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -53,12 +63,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: BYU-CS-Course-Ops/utils
+          ref: ${{ inputs.utils_ref }}
           path: utils
 
-      - name: Setup
-        run: |
-          mkdir -p "$LOGS_DIR"
-          pip install mdxcanvas==${{ inputs.mdxcanvas_version }} discord-webhook
+      - name: Install MDXCanvas
+        run: pip install mdxcanvas==${{ inputs.mdxcanvas_version }}
+
+      - name: Install notification dependencies
+        shell: bash
+        run: pip install discord-webhook markdowndata tabulate ${{ inputs.extra-packages }}
+
+      - name: Create logs directory
+        run: mkdir -p "$LOGS_DIR"
 
       - name: Run MDXCanvas
         id: mdxcanvas
@@ -80,36 +96,24 @@ jobs:
             > "$LOGS_DIR/mdxcanvas.stdout.log" \
             2> "$LOGS_DIR/mdxcanvas.stderr.log"
 
-      - name: Process results and notify
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
+      - name: Print debug logs
         run: |
           echo "=== MDXCanvas STDOUT ==="
             cat "$LOGS_DIR/mdxcanvas.stdout.log"
-          
+
           echo "=== MDXCanvas STDERR ==="
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
-          
-          # Create fallback if needed
-          python utils/course_updates/create_fallback.py \
-              --output-type MDXCanvas \
-              --output-path "$OUTPUT_PATH" \
-              --stdout-log "$LOGS_DIR/mdxcanvas.stdout.log" \
-              --stderr-log "$LOGS_DIR/mdxcanvas.stderr.log" \
-              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          echo "=== Updated Output ==="
-          cat "$OUTPUT_PATH"
-
-          # Get avatar and send notification
-          AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url')
-
-          python utils/course_updates/send_course_notification.py \
-              --type "canvas" \
-              --payload "$OUTPUT_PATH" \
-              --course-id "${{ inputs.course_id }}" \
-              --author "${{ github.actor }}" \
-              --author-icon "$AVATAR_URL" \
-              --branch "${{ github.ref }}" \
-              --cicd-id "${{ secrets.discord_role }}" \
-              --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Send course notification
+        uses: ./utils/.github/actions/send-course-notification
+        with:
+          notification-type: canvas
+          output-type: MDXCanvas
+          payload-path: ${{ env.OUTPUT_PATH }}
+          stdout-log: ${{ env.LOGS_DIR }}/mdxcanvas.stdout.log
+          stderr-log: ${{ env.LOGS_DIR }}/mdxcanvas.stderr.log
+          course-id: ${{ inputs.course_id }}
+          course-name: ${{ inputs.course_name }}
+          course-url: ${{ inputs.course_url }}
+          discord-role: ${{ secrets.discord_role }}
+          discord-webhook-url: ${{ secrets.discord_webhook_url }}
