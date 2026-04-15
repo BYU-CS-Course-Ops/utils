@@ -1,0 +1,54 @@
+name: Send PyPI Notification
+description: Get GitHub avatar and send PyPI update notification to Discord
+
+inputs:
+  pypi-package:
+    description: "PyPI package name"
+    required: true
+  success:
+    description: "Whether the publish succeeded ('true' or 'false')"
+    required: true
+  toml-updated:
+    description: "Whether pyproject.toml version was bumped ('true' or 'false')"
+    required: true
+  version:
+    description: "Package version"
+    required: true
+  discord-role:
+    description: "Discord CI/CD role ID"
+    required: true
+  discord-webhook-url:
+    description: "Discord webhook URL"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Get user avatar
+      id: avatar
+      shell: bash
+      run: |
+        AVATAR_URL=$(curl -s "https://api.github.com/users/${{ github.actor }}" | jq -r '.avatar_url')
+        echo "url=$AVATAR_URL" >> $GITHUB_OUTPUT
+
+    - name: Send PyPI notification to Discord
+      shell: bash
+      env:
+        DISCORD_WEBHOOK_URL: ${{ inputs.discord-webhook-url }}
+      run: |
+        CMD="PYTHONPATH=utils python -m notifications.send_pypi \
+          --type ${{ inputs.pypi-package }} \
+          --author ${{ github.actor }} \
+          --author-icon ${{ steps.avatar.outputs.url }} \
+          --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+        if [ '${{ inputs.success }}' == 'true' ] && \
+           [ '${{ inputs.toml-updated }}' == 'true' ]; then
+          CMD="$CMD --success 1"
+        fi
+
+        CMD="$CMD --version ${{ inputs.version }} \
+            --cicd-id ${{ inputs.discord-role }}"
+
+        echo "$CMD"
+        eval "$CMD"

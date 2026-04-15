@@ -83,3 +83,18 @@ class TestEmbedBuilderLimits:
             b.add_field(f"f{i}", f"v{i}")
         embed = b.build()
         assert len(embed.fields) == 10
+
+    def test_typical_pypi_embed_stays_small(self):
+        b = EmbedBuilder(
+            title="PyPI Update",
+            description="A new version has been published.",
+            color=0x3B82F6,
+            timestamp="2025-01-01T00:00:00Z",
+            author=Author(name="PyPI Bot"),
+            footer=Footer(text="BeanLab Dev Utils"),
+        )
+        b.add_field("Package", "my-package")
+        b.add_field("Version", "1.2.3")
+        b.add_field("Status", "Published")
+        embed = b.build()
+        assert calc_embed_size(embed) < EMBED_CHAR_LIMIT
