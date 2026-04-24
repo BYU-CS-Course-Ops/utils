@@ -194,7 +194,7 @@ def format_notification(
             _format_item(content_type, name, max_len, url)
             for content_type, name, url in remaining
         ]
-        header = f"Remaining Resources ({len(remaining)})"
+        header = f"Deployed Resources ({len(remaining)})"
         _add_items_to_builder(
             eb, mb, header, lines, author_obj, footer, continuation_title,
         )
