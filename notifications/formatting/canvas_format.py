@@ -117,6 +117,9 @@ def format_notification(
     footer = Footer(text=style["footer_text"], icon_url=style["footer_icon_url"])
     author_obj = Author(name=author, icon_url=author_icon)
 
+    data["deployed_content"] = sorted(data["deployed_content"], key=lambda item: item[1].lower())
+    data["content_to_review"] = sorted(data["content_to_review"], key=lambda item: item[1].lower())
+
     # -- Title ----------------------------------------------------------------
     if data["error"]:
         title = f"CS {course_id} | {course_name} -- Deploy failed"
@@ -141,7 +144,7 @@ def format_notification(
         content = f"<@&{cicd_role_id}> -- Deployed Resources to Review"
 
     # -- Description ----------------------------------------------------------
-    description = f"**Branch:** `{branch}`"
+    description = f"[View GitHub Action]({action_url})\n**Branch:** `{branch}`"
 
     if data["error"]:
         truncated = truncate_error(data["error"])
