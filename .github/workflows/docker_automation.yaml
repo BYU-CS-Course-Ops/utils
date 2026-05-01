@@ -50,7 +50,7 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook markdowndata ${{ inputs.extra-packages }}
+        run: pip install tabulate discord-webhook markdowndata ${{ inputs.extra-packages }}
 
       - name: Get changed files
         run: |
