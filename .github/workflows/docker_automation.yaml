@@ -84,8 +84,8 @@ jobs:
           python utils/docker_updates/build_dockers.py \
               --files "${{ env.FILES }}" \
               --output-file "${{ github.workspace }}/.github/logs/docker_output.json" \
-              --root-dir "${{ github.workspace }}" \
-              > "$STDOUT_LOG" 2> "$STDERR_LOG"
+              --root-dir "${{ github.workspace }}"
+#              > "$STDOUT_LOG" 2> "$STDERR_LOG"
 
       - name: Send course notification
         if: always()
