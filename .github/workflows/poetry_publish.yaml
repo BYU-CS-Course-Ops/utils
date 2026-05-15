@@ -68,33 +68,42 @@ jobs:
     runs-on: ubuntu-latest
     if: always()  # Notify on both success and failure
     steps:
+      - name: Checkout utils repo
+        uses: actions/checkout@v4
+        with:
+          repository: BYU-CS-Course-Ops/utils
+          path: utils
+
       - name: Get User Avatar URL
         id: avatar
         run: |
           AVATAR_URL=$(curl -s https://api.github.com/users/${{ github.actor }} | jq -r '.avatar_url')
           echo "avatar_url=$AVATAR_URL" >> $GITHUB_ENV
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install notification script dependencies
+        run: pip install discord-webhook
+
       - name: Send notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
         run: |
-          CMD="python /scripts/send_update_notification.py \
-            --type ${{ inputs.pypi_package }} \
-            --author ${{ github.actor }} \
-            --author-icon ${{ env.avatar_url }} \
-            --action-url https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ARGS=(
+            --type "${{ inputs.pypi_package }}"
+            --author "${{ github.actor }}"
+            --author-icon "${{ env.avatar_url }}"
+            --action-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --version "${{ needs.poetry-publish.outputs.version }}"
+            --cicd-id "${{ secrets.discord_role }}"
+          )
 
           if [ '${{ needs.poetry-publish.outputs.success }}' == 'true' ] && \
              [ '${{ needs.check-toml-version.outputs.uped_toml }}' == 'true' ]; then
-            CMD="$CMD --success 1"
+            ARGS+=(--success 1)
           fi
 
-          CMD="$CMD --version ${{ needs.poetry-publish.outputs.version }} \
-              --cicd-id ${{ secrets.discord_role }}"
-
-          echo "$CMD"
-
-          docker run --rm \
-            -v ${{ github.workspace }}:/repo \
-            -w /repo \
-            -e DISCORD_WEBHOOK_URL=${{ secrets.discord_webhook_url }} \
-            byucscourseops/send_update_notification:latest \
-            sh -c "$CMD"
+          python ./utils/pypi_updates/send_update_notification.py "${ARGS[@]}"
