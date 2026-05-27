@@ -58,6 +58,15 @@ def main(ntype, author, author_icon, action_url, success=None, version=None, cic
             "color": 16776960,
             "footer_text": "BYU Recan GitHub Action",
             "footer_icon_url": "https://tinyurl.com/4dyna5du"
+        },
+        "aargs": {
+            "username": "aargs Notifications",
+            "title": "aargs Update",
+            "success_description": lambda x: f"Updated to version **`{x}`**",
+            "failure_description": "An **error occurred** while updating aargs.",
+            "color": 65280,
+            "footer_text": "aargs GitHub Action",
+            "footer_icon_url": "https://tinyurl.com/4dyna5du"
         }
     }
 
@@ -119,7 +128,7 @@ def main(ntype, author, author_icon, action_url, success=None, version=None, cic
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Send Canvas or Docker notifications to Discord.")
-    parser.add_argument("--type", required=True, choices=["mdxcanvas", "markdowndata", "byu_pytest_utils", "byu-recan"],
+    parser.add_argument("--type", required=True, choices=["mdxcanvas", "markdowndata", "byu_pytest_utils", "byu-recan", "aargs"],
                         help="Type of notification")
     parser.add_argument("--author", required=True, help="Name of the author")
     parser.add_argument("--author-icon", required=True, help="URL of the author's icon")
