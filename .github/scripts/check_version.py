@@ -7,6 +7,11 @@ def main():
         sys.exit(1)
 
     build = tuple(int(x) for x in sys.argv[1].split("."))
+
+    if sys.argv[2] == "null":
+        print(f"{build} vs (not on PyPI) — first publish")
+        return
+
     pypi = tuple(int(x) for x in sys.argv[2].split("."))
     print(f"{build} vs {pypi}")
 
