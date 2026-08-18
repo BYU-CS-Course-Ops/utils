@@ -89,3 +89,78 @@ jobs:
       discord_webhook_url: ${{ secrets.GHA_BEANLAB_DISCORD_WEBHOOK }}
       discord_role: ${{ secrets.CICD_NOTIFY_DISCORD_ROLE }}
 ```
+
+## Example usage for release_notify.yaml
+
+`release_notify.yaml` is a reusable release-focused Discord notification workflow. It checks out the calling repository and posts a notification for the current commit.
+
+Inputs:
+
+- `project_name` (**required**): Name displayed in the notification.
+- `version` (optional): Explicit version. This takes precedence over automatic detection.
+- `version_source` (optional): `toml` or `file`; defaults to `toml`.
+- `version_path` (optional): Plaintext version-file path when `version_source` is `file`; defaults to `VERSION`.
+- `changelog_path` (optional): Changelog path. The matching `## VERSION` section is included when present. Omit this for projects without a changelog.
+- `success` (optional): Whether the release succeeded; defaults to `true`.
+
+Required and optional secrets:
+
+- `discord_webhook_url` (**required**): Discord webhook URL.
+- `discord_role` (optional): Discord role ID to mention.
+
+### Project using TOML version metadata
+
+```yaml
+jobs:
+  notify-release:
+    uses: BYU-CS-Course-Ops/utils/.github/workflows/release_notify.yaml@main
+    with:
+      project_name: "myteam"
+      changelog_path: "src/myteam/CHANGELOG.md"
+    secrets:
+      discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      discord_role: ${{ secrets.DISCORD_ROLE_ID }}
+```
+
+When `version` is omitted, the workflow reads `[project].version` or `[tool.poetry].version` from `pyproject.toml`.
+
+### Project using a plaintext VERSION file
+
+```yaml
+jobs:
+  notify-release:
+    uses: BYU-CS-Course-Ops/utils/.github/workflows/release_notify.yaml@main
+    with:
+      project_name: "MDXCanvas"
+      version_source: "file"
+      version_path: "mdxcanvas/VERSION"
+    secrets:
+      discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+```
+
+### Passing a version from an earlier job
+
+A client workflow can read the version in an earlier job and pass it explicitly. The notification job must depend on that job with `needs`:
+
+```yaml
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+  notify-release:
+    needs: get-version
+    uses: BYU-CS-Course-Ops/utils/.github/workflows/release_notify.yaml@main
+    with:
+      project_name: "MDXCanvas"
+      version: ${{ needs.get-version.outputs.version }}
+    secrets:
+      discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+```
+
+The caller does not need a separate checkout for the reusable workflow. Projects without a changelog should omit `changelog_path`; the changelog section is omitted from the Discord message.

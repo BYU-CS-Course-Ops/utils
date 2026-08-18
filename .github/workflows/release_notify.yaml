@@ -1,0 +1,161 @@
+name: Notify Discord About Release
+
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        description: "Name displayed in the Discord notification"
+        required: true
+        type: string
+      version:
+        description: "Release version; if omitted, read from the configured version source"
+        required: false
+        default: ""
+        type: string
+      version_source:
+        description: "Version source: 'toml' or 'file'"
+        required: false
+        default: "toml"
+        type: string
+      version_path:
+        description: "Path to the plaintext version file when version_source is 'file'"
+        required: false
+        default: "VERSION"
+        type: string
+      changelog_path:
+        description: "Optional path to the changelog file"
+        required: false
+        default: ""
+        type: string
+      success:
+        description: "Whether the release succeeded"
+        required: false
+        default: true
+        type: boolean
+    secrets:
+      discord_webhook_url:
+        description: "Discord webhook URL"
+        required: true
+      discord_role:
+        description: "Optional Discord role ID to mention"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Post release notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out caller repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build Discord payload
+        env:
+          PROJECT_NAME: ${{ inputs.project_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          VERSION_SOURCE: ${{ inputs.version_source }}
+          VERSION_PATH: ${{ inputs.version_path }}
+          CHANGELOG_PATH: ${{ inputs.changelog_path }}
+          RELEASE_SUCCESS: ${{ inputs.success }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          DISCORD_ROLE_ID: ${{ secrets.discord_role }}
+        run: |
+          python - <<'PY' > discord-payload.json
+          import json
+          import os
+          import re
+          from pathlib import Path
+          import tomllib
+
+          root = Path.cwd()
+          project_name = os.environ["PROJECT_NAME"]
+          version = os.environ["INPUT_VERSION"].strip()
+
+          if not version:
+              source = os.environ["VERSION_SOURCE"].strip().lower()
+              if source == "toml":
+                  pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+                  project = pyproject.get("project", {})
+                  version = project.get("version") or pyproject.get("tool", {}).get("poetry", {}).get("version", "")
+              elif source == "file":
+                  version_path = root / os.environ["VERSION_PATH"].strip()
+                  if not version_path.is_file():
+                      raise SystemExit(f"Version file not found: {version_path}")
+                  version = version_path.read_text().strip()
+              else:
+                  raise SystemExit("version_source must be 'toml' or 'file'")
+
+          if not version:
+              raise SystemExit("A version input or a value from the configured version source is required")
+
+          changelog_section = ""
+          changelog_path = os.environ["CHANGELOG_PATH"].strip()
+          if changelog_path:
+              changelog = root / changelog_path
+              if changelog.is_file():
+                  lines = changelog.read_text().splitlines()
+                  heading = re.compile(rf"^##\s+\[?{re.escape(version)}\]?\s*$")
+                  notes = []
+                  capturing = False
+                  for line in lines:
+                      if line.startswith("## "):
+                          if capturing:
+                              break
+                          capturing = bool(heading.match(line.strip()))
+                          continue
+                      if capturing:
+                          notes.append(line.rstrip())
+
+                  note_lines = [line for line in notes if line.strip()]
+                  if note_lines:
+                      changelog_section = "Changelog\n" + "\n".join(note_lines)
+
+          role_id = os.environ.get("DISCORD_ROLE_ID", "").strip()
+          role_mention = f"<@&{role_id}> " if role_id else ""
+          succeeded = os.environ["RELEASE_SUCCESS"].lower() == "true"
+          status = "was released successfully" if succeeded else "release failed"
+          prefix = f"{role_mention}{project_name} {version} {status}."
+          commit = f"Commit: `{os.environ['COMMIT_SHA'][:7]}` in `{os.environ['REPOSITORY']}`"
+
+          sections = [prefix, os.environ["COMMIT_URL"]]
+          if changelog_section and succeeded:
+              sections.extend([changelog_section, commit])
+          else:
+              sections.append(commit)
+          content = "\n\n".join(sections)
+
+          if len(content) > 2000 and changelog_section:
+              fixed = "\n\n".join([prefix, os.environ["COMMIT_URL"], "", commit])
+              available = max(0, 2000 - len(fixed) - len("Changelog\n") - 2)
+              notes = changelog_section[len("Changelog\n"):]
+              shortened = notes[:available].rstrip()
+              if len(shortened) < len(notes):
+                  shortened = shortened.rstrip(".") + "..."
+              content = "\n\n".join([prefix, os.environ["COMMIT_URL"], "Changelog\n" + shortened, commit])
+
+          payload = {"content": content}
+          if role_id:
+              payload["allowed_mentions"] = {"parse": [], "roles": [role_id]}
+          print(json.dumps(payload))
+          PY
+
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
+        run: |
+          test -n "$DISCORD_WEBHOOK_URL"
+          curl -sS --fail-with-body -X POST \
+            -H "Content-Type: application/json" \
+            --data @discord-payload.json \
+            "$DISCORD_WEBHOOK_URL"
