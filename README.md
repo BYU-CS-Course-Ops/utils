@@ -164,3 +164,45 @@ jobs:
 ```
 
 The caller does not need a separate checkout for the reusable workflow. Projects without a changelog should omit `changelog_path`; the changelog section is omitted from the Discord message.
+
+## Example usage for publish.yaml
+
+`publish.yaml` is a reusable publishing workflow that checks release state, builds and publishes a package when the version is new, then invokes `release_notify.yaml`. Set `publisher` to either `uv` or `poetry`. It compares the current version with the previous commit and checks PyPI, so ordinary commits and already-published versions are skipped.
+
+### Publishing with uv
+
+Both publishing modes use a project-scoped PyPI API token. The workflow builds with the selected tool and uploads the resulting `dist/` files with the PyPA publishing action.
+
+```yaml
+jobs:
+  publish:
+    uses: BYU-CS-Course-Ops/utils/.github/workflows/publish.yaml@main
+    with:
+      pypi_package: "myteam"
+      publisher: "uv"
+      project_name: "myteam"              # Optional; defaults to pypi_package
+      changelog_path: "src/myteam/CHANGELOG.md" # Optional
+    secrets:
+      pypi_token: ${{ secrets.PYPI_TOKEN }}
+      discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      discord_role: ${{ secrets.DISCORD_ROLE_ID }} # Optional
+```
+
+### Publishing with Poetry and a VERSION file
+
+```yaml
+jobs:
+  publish:
+    uses: BYU-CS-Course-Ops/utils/.github/workflows/publish.yaml@main
+    with:
+      pypi_package: "mdxcanvas"
+      publisher: "poetry"
+      version_source: "file"
+      version_path: "mdxcanvas/VERSION"
+    secrets:
+      pypi_token: ${{ secrets.PYPI_TOKEN }}
+      discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      discord_role: ${{ secrets.DISCORD_ROLE_ID }} # Optional
+```
+
+Inputs forwarded to the release notification include `project_name`, `version`, `version_source`, `version_path`, and `changelog_path`. All projects must provide `pypi_token`. The selected publisher controls only how the package is built; both builds are uploaded with `pypa/gh-action-pypi-publish`. A notification is sent only when a new version needs publishing, including when the publish job fails.

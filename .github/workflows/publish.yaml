@@ -1,0 +1,231 @@
+name: Build and Publish Python Package
+
+on:
+  workflow_call:
+    inputs:
+      pypi_package:
+        description: "PyPI package name"
+        required: true
+        type: string
+      publisher:
+        description: "Publishing tool: 'uv' or 'poetry'"
+        required: true
+        type: string
+      project_name:
+        description: "Name displayed in the Discord notification; defaults to pypi_package"
+        required: false
+        default: ""
+        type: string
+      version:
+        description: "Explicit release version; overrides version-source detection"
+        required: false
+        default: ""
+        type: string
+      version_source:
+        description: "Version source: 'toml' or 'file'"
+        required: false
+        default: "toml"
+        type: string
+      version_path:
+        description: "Plaintext version-file path when version_source is 'file'"
+        required: false
+        default: "VERSION"
+        type: string
+      changelog_path:
+        description: "Optional changelog path passed to release_notify"
+        required: false
+        default: ""
+        type: string
+      python_version:
+        description: "Python version used to build the package"
+        required: false
+        default: "3.11"
+        type: string
+    secrets:
+      pypi_token:
+        description: "PyPI API token used for publishing"
+        required: true
+      discord_webhook_url:
+        description: "Discord webhook URL"
+        required: true
+      discord_role:
+        description: "Optional Discord role ID to mention"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  detect-release-state:
+    name: Detect release state
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.decide.outputs.should_publish }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read and compare versions
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          VERSION_SOURCE: ${{ inputs.version_source }}
+          VERSION_PATH: ${{ inputs.version_path }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          import tomllib
+          from pathlib import Path
+
+          source = os.environ["VERSION_SOURCE"].strip().lower()
+          explicit = os.environ["INPUT_VERSION"].strip()
+          version_path = os.environ["VERSION_PATH"].strip()
+          before_sha = os.environ["BEFORE_SHA"]
+          root = Path.cwd()
+
+          if source not in {"toml", "file"}:
+              raise SystemExit("version_source must be 'toml' or 'file'")
+
+          def read_version(directory: Path) -> str:
+              if explicit:
+                  return explicit
+              if source == "file":
+                  path = directory / version_path
+                  if not path.is_file():
+                      raise SystemExit(f"Version file not found: {path}")
+                  return path.read_text().strip()
+
+              pyproject = tomllib.loads((directory / "pyproject.toml").read_text())
+              project = pyproject.get("project", {})
+              return project.get("version") or pyproject.get("tool", {}).get("poetry", {}).get("version", "")
+
+          new_version = read_version(root)
+          if not new_version:
+              raise SystemExit("Could not determine the release version")
+
+          old_version = ""
+          if not explicit and before_sha != "0000000000000000000000000000000000000000":
+              if source == "file":
+                  try:
+                      old_version = subprocess.run(
+                          ["git", "show", f"{before_sha}:{version_path}"],
+                          check=True, capture_output=True, text=True,
+                      ).stdout.strip()
+                  except subprocess.CalledProcessError:
+                      old_version = ""
+              else:
+                  try:
+                      old_toml = subprocess.run(
+                          ["git", "show", f"{before_sha}:pyproject.toml"],
+                          check=True, capture_output=True, text=True,
+                      ).stdout
+                      parsed = tomllib.loads(old_toml)
+                      old_version = parsed.get("project", {}).get("version") or parsed.get("tool", {}).get("poetry", {}).get("version", "")
+                  except subprocess.CalledProcessError:
+                      old_version = ""
+
+          version_changed = bool(explicit) or old_version != new_version
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"version={new_version}\n")
+              output.write(f"version_changed={'true' if version_changed else 'false'}\n")
+          PY
+
+      - name: Check whether version exists on PyPI
+        id: pypi
+        env:
+          PYPI_PACKAGE: ${{ inputs.pypi_package }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          status="$(curl -sS -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/${PYPI_PACKAGE}/${VERSION}/json")"
+          case "$status" in
+            200) echo "exists=true" >> "$GITHUB_OUTPUT" ;;
+            404) echo "exists=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unexpected PyPI response: $status"; exit 1 ;;
+          esac
+
+      - name: Decide whether to publish
+        id: decide
+        run: |
+          if [ "${{ steps.version.outputs.version_changed }}" = "true" ] && \
+             [ "${{ steps.pypi.outputs.exists }}" = "false" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    name: Publish with ${{ inputs.publisher }}
+    needs: detect-release-state
+    if: needs.detect-release-state.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate publisher
+        shell: bash
+        run: |
+          case "${{ inputs.publisher }}" in
+            uv|poetry) ;;
+            *) echo "publisher must be 'uv' or 'poetry'"; exit 1 ;;
+          esac
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Set up uv
+        if: inputs.publisher == 'uv'
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build with uv
+        if: inputs.publisher == 'uv'
+        run: uv build
+
+      - name: Publish with uv build
+        if: inputs.publisher == 'uv'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          username: __token__
+          password: ${{ secrets.pypi_token }}
+
+      - name: Install Poetry
+        if: inputs.publisher == 'poetry'
+        run: pip install "poetry<2" poetry-version-from-file
+
+      - name: Install project with Poetry
+        if: inputs.publisher == 'poetry'
+        run: poetry install
+
+      - name: Build with Poetry
+        if: inputs.publisher == 'poetry'
+        run: poetry build
+
+      - name: Publish Poetry build
+        if: inputs.publisher == 'poetry'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          username: __token__
+          password: ${{ secrets.pypi_token }}
+
+  notify-release:
+    name: Notify Discord
+    needs: [detect-release-state, publish]
+    if: always() && needs.detect-release-state.result == 'success' && needs.detect-release-state.outputs.should_publish == 'true'
+    uses: ./.github/workflows/release_notify.yaml
+    with:
+      project_name: ${{ inputs.project_name || inputs.pypi_package }}
+      version: ${{ needs.detect-release-state.outputs.version }}
+      version_source: ${{ inputs.version_source }}
+      version_path: ${{ inputs.version_path }}
+      changelog_path: ${{ inputs.changelog_path }}
+      success: ${{ needs.publish.result == 'success' }}
+    secrets:
+      discord_webhook_url: ${{ secrets.discord_webhook_url }}
+      discord_role: ${{ secrets.discord_role }}
