@@ -105,7 +105,9 @@ jobs:
               changelog = root / changelog_path
               if changelog.is_file():
                   lines = changelog.read_text().splitlines()
-                  heading = re.compile(rf"^##\s+\[?{re.escape(version)}\]?\s*$")
+                  heading = re.compile(
+                      rf"^##\s+\[?{re.escape(version)}\]?(?:\s+.*)?\s*$"
+                  )
                   notes = []
                   capturing = False
                   for line in lines:
