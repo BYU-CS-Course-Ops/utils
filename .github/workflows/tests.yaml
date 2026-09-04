@@ -1,0 +1,37 @@
+name: Tests
+
+# Nothing ran tests/ before this. The cost of that was not hypothetical: the
+# suite had been red on main for months. A fixture the tests still load was
+# deleted in a reshuffle, a header was renamed in the code and not in the tests,
+# and an assertion pinned one literal spelling of a pip install line. None of it
+# was noticed, because nothing was looking.
+#
+# The workflows here deploy to live courses for five classes, so a broken helper
+# lands on students. This is the cheapest possible guard against that.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # There is no pyproject.toml or requirements file; these are the three
+      # third-party imports in the tree, and the same three the course
+      # workflows install for the notification step.
+      - name: Install dependencies
+        run: pip install pytest discord-webhook markdowndata tabulate
+
+      - name: Run tests
+        run: python -m pytest tests -v
