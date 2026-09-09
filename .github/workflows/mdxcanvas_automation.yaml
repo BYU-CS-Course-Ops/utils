@@ -105,6 +105,7 @@ jobs:
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
 
       - name: Send course notification
+        if: always()
         uses: ./utils/.github/actions/send-course-notification
         with:
           notification-type: canvas
@@ -117,3 +118,16 @@ jobs:
           course-url: ${{ inputs.course_url }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
+
+      # `continue-on-error` above lets the notification run on a failed deploy,
+      # but it also makes the job succeed: GitHub records the step's conclusion
+      # as success and only `outcome` keeps the failure. So a deploy that threw
+      # halfway through left a green check on the commit, and the course was
+      # short whatever had not been pushed yet. Re-fail here, after the
+      # notification has gone out, so the check matches what actually happened.
+      - name: Fail the job if MDXCanvas failed
+        if: always() && steps.mdxcanvas.outcome == 'failure'
+        run: |
+          echo "::error::MDXCanvas exited non-zero. The deploy is incomplete -- \
+          see the MDXCanvas STDERR section above for the failure."
+          exit 1

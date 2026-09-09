@@ -101,3 +101,12 @@ jobs:
           course-url: ${{ inputs.course_url }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
+
+      # Same as the Canvas workflow: continue-on-error keeps the notification
+      # alive on a failed build, and would otherwise leave the job green.
+      - name: Fail the job if the Docker build failed
+        if: always() && steps.run_build_dockers.outcome == 'failure'
+        run: |
+          echo "::error::build_dockers.py exited non-zero. The images are not \
+          up to date -- see the logs above."
+          exit 1
