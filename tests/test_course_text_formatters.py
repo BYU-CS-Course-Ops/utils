@@ -38,9 +38,9 @@ class TestCanvasNotificationSuccess:
         assert "page" in overview.value
         assert "assignment" in overview.value
 
-        # Remaining resources field follows
+        # Deployed resources field follows
         remaining = embed.fields[1]
-        assert "Remaining Resources" in remaining.name
+        assert "Deployed Resources" in remaining.name
         assert "Week 12 Overview" in remaining.value
 
         assert validate_notification(notification) == []
@@ -78,16 +78,16 @@ class TestCanvasNotificationReview:
         # Has overview, needs review, and remaining fields
         field_names = [f.name for f in embed.fields]
         assert any("Overview" in n for n in field_names)
-        assert any("Needs review" in n for n in field_names)
-        assert any("Remaining Resources" in n for n in field_names)
+        assert any("Needs Review" in n for n in field_names)
+        assert any("Deployed Resources" in n for n in field_names)
 
         # Review items present
-        review_field = next(f for f in embed.fields if "Needs review" in f.name)
+        review_field = next(f for f in embed.fields if "Needs Review" in f.name)
         assert "Needs Review" in review_field.value
         assert "Professor Approval" in review_field.value
 
-        # Deduplication: review item not in remaining
-        remaining_field = next(f for f in embed.fields if "Remaining Resources" in f.name)
+        # Deduplication: review item not in the deployed list
+        remaining_field = next(f for f in embed.fields if "Deployed Resources" in f.name)
         assert "https://courses.example/review-me" not in remaining_field.value
         assert "Week 12 Overview" in remaining_field.value
 
