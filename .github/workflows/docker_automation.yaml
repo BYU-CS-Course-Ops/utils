@@ -16,6 +16,14 @@ on:
         required: false
         default: main
         type: string
+      extra-packages:
+        description: >-
+          Extra pip packages for the notification step, space separated. The
+          pip line already interpolated this before it was declared, so it
+          expanded to empty and read as configurable without being so.
+        required: false
+        default: ""
+        type: string
     secrets:
       discord_role:
         required: true
@@ -50,7 +58,7 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install tabulate discord-webhook markdowndata ${{ inputs.extra-packages }}
+        run: pip install -r utils/requirements-notifications.txt ${{ inputs.extra-packages }}
 
       - name: Get changed files
         run: |

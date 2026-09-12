@@ -1,0 +1,13 @@
+# What the Discord notification steps import, for every course workflow that
+# calls into this repo. Listed once here rather than spelled out in each
+# workflow's pip line, where the copies were free to drift apart with nothing
+# to notice.
+#
+# Both reusable workflows check this repo out at `utils/`, so they install with
+#   pip install -r utils/requirements-notifications.txt
+#
+# Unpinned on purpose: these are the notification path's dependencies, not the
+# deploy's, and a course pins what it deploys with (mdxcanvas_version) instead.
+discord-webhook
+markdowndata
+tabulate
