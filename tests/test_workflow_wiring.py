@@ -18,7 +18,11 @@ def test_course_workflows_expose_and_forward_course_metadata_inputs():
     assert "course_name:" in canvas_workflow
     assert "course_url:" in canvas_workflow
     assert "course-name: ${{ inputs.course_name }}" in canvas_workflow
-    assert "course-url: ${{ inputs.course_url }}" in canvas_workflow
+    # The canvas workflow derives the id and URL from course_info_path rather
+    # than forwarding the inputs, so a hand-written pair cannot misreport which
+    # course a deploy touched. The inputs stay, ignored, so no caller breaks.
+    assert "course-url: ${{ steps.course.outputs.course_url }}" in canvas_workflow
+    assert "course-id: ${{ steps.course.outputs.course_id }}" in canvas_workflow
 
     assert "course_name:" in docker_workflow
     assert "course_url:" in docker_workflow
