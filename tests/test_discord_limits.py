@@ -482,3 +482,13 @@ class TestPayloadShape:
         """The guard must not reject what mdxcanvas actually writes today."""
         data = self._load("test-urgent-mdxcanvas-payload.json")
         assert self._format(data) is not None
+
+    def test_extra_fields_are_ignored(self):
+        """Only type, name and url are used, so a longer entry is fine. This
+        formats the payload, it does not validate it."""
+        data = self._load("test-urgent-mdxcanvas-payload.json")
+        data["content_to_review"] = [item + ["something new"]
+                                     for item in data["content_to_review"]]
+        data["deployed_content"] = [item + ["something new"]
+                                    for item in data["deployed_content"]]
+        assert self._format(data) is not None

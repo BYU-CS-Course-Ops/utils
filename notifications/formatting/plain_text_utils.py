@@ -17,14 +17,14 @@ def dedupe_remaining_content(
     deployed_content: list[tuple[str, str, str | None]],
     review_items: list[tuple[str, str, str | None]],
 ) -> list[tuple[str, str, str | None]]:
-    review_urls = {url for _, _, url in review_items if url}
-    review_labels = {label for _, label, _ in review_items}
+    review_urls = {url for _, _, url, *_ in review_items if url}
+    review_labels = {label for _, label, *_ in review_items}
 
     seen_urls: set[str] = set()
     seen_labels: set[str] = set()
     remaining = []
 
-    for content_type, label, url in deployed_content:
+    for content_type, label, url, *_ in deployed_content:
         if url and url in review_urls:
             continue
         if label in review_labels:
