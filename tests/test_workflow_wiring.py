@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 
@@ -56,6 +57,25 @@ def test_course_workflows_install_markdowndata_for_notification_formatting():
                        if "pip install" in line and "markdowndata" in line)
         for package in ("discord-webhook", "markdowndata", "tabulate"):
             assert package in install, install
+
+
+def test_canvas_workflow_installs_what_course_facts_imports():
+    """The workflow runs course_facts.py with the runner's system python3.
+    Anything it imports that the install line omits works only as long as the
+    runner image happens to carry it."""
+    workflow = Path(".github/workflows/mdxcanvas_automation.yaml").read_text()
+    source = Path("notifications/course_facts.py").read_text()
+
+    install = next(line for line in workflow.splitlines()
+                   if "pip install" in line and "markdowndata" in line)
+
+    imports = {line.split()[1].split(".")[0]
+               for line in source.splitlines()
+               if line.startswith(("import ", "from "))}
+    third_party = imports - set(sys.stdlib_module_names) - {"notifications"}
+
+    for module in third_party:
+        assert {"yaml": "pyyaml"}.get(module, module) in install, install
 
 
 def test_course_workflows_fail_the_job_when_the_work_step_failed():
