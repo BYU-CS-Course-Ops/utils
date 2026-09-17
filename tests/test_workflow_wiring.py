@@ -44,18 +44,26 @@ def test_course_workflows_accept_utils_ref_and_use_local_utils_action():
     assert "uses: ./utils/.github/actions/send-course-notification" in docker_workflow
 
 
-def test_course_workflows_install_markdowndata_for_notification_formatting():
-    canvas_workflow = Path(".github/workflows/mdxcanvas_automation.yaml").read_text()
-    docker_workflow = Path(".github/workflows/docker_automation.yaml").read_text()
+def test_course_workflows_install_the_notification_packages():
+    """Both workflows must install what the notification step imports.
 
-    # Order-insensitive: the two workflows list the same three packages in
-    # different orders, and asserting on one literal spelling failed against
-    # docker_automation.yaml, which installs tabulate first.
-    for workflow in (canvas_workflow, docker_workflow):
-        install = next(line for line in workflow.splitlines()
-                       if "pip install" in line and "markdowndata" in line)
-        for package in ("discord-webhook", "markdowndata", "tabulate"):
-            assert package in install, install
+    They install from requirements-notifications.txt rather than listing the
+    packages inline, so this checks the manifest they point at. Asserting on a
+    literal pip line is what this test used to do, and it broke twice: once on
+    argument order, once when the list moved into a file.
+    """
+    manifest = Path("requirements-notifications.txt")
+    declared = {line.split("==")[0].strip().lower()
+                for line in manifest.read_text().splitlines()
+                if line.strip() and not line.startswith("#")}
+    for package in ("discord-webhook", "markdowndata", "tabulate", "pyyaml"):
+        assert package in declared, f"{package} missing from {manifest}"
+
+    for name in ("mdxcanvas_automation.yaml", "docker_automation.yaml"):
+        workflow = Path(".github/workflows") / name
+        assert any("pip install" in line and manifest.name in line
+                   for line in workflow.read_text().splitlines()), \
+            f"{name} does not install from {manifest.name}"
 
 
 def test_course_workflows_fail_the_job_when_the_work_step_failed():
