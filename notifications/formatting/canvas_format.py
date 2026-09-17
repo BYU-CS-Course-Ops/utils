@@ -117,6 +117,16 @@ def format_notification(
     footer = Footer(text=style["footer_text"], icon_url=style["footer_icon_url"])
     author_obj = Author(name=author, icon_url=author_icon)
 
+    # Needs type, name and url; anything after them is ignored. Fewer than that
+    # is mdxcanvas older than 0.7.8, which wrote [name, url] and would be read
+    # here as a type and a name.
+    for item in data["content_to_review"]:
+        if len(item) < 3:
+            raise ValueError(
+                f"content_to_review entry {item!r} has {len(item)} fields, "
+                "expected at least [type, name, url]. Needs mdxcanvas >= 0.7.8."
+            )
+
     data["deployed_content"] = sorted(data["deployed_content"], key=lambda item: item[1].lower())
     data["content_to_review"] = sorted(data["content_to_review"], key=lambda item: item[1].lower())
 
@@ -164,7 +174,7 @@ def format_notification(
 
     # -- Calculate max resource type length for formatting ---------------------------------------------
     grouped = defaultdict(int)
-    for rtype, _, _ in data["deployed_content"]:
+    for rtype, *_ in data["deployed_content"]:
         grouped[rtype] += 1
 
     max_len = max((len(rtype) for rtype in grouped), default=0)
@@ -178,7 +188,7 @@ def format_notification(
     if data["content_to_review"]:
         lines = [
             _format_item(content_type, name, max_len, url)
-            for content_type, name, url in data["content_to_review"]
+            for content_type, name, url, *_ in data["content_to_review"]
         ]
         header = f"Needs Review ({len(data['content_to_review'])})"
         _add_items_to_builder(
@@ -192,7 +202,7 @@ def format_notification(
     if remaining:
         lines = [
             _format_item(content_type, name, max_len, url)
-            for content_type, name, url in remaining
+            for content_type, name, url, *_ in remaining
         ]
         header = f"Deployed Resources ({len(remaining)})"
         _add_items_to_builder(
