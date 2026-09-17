@@ -117,6 +117,16 @@ def format_notification(
     footer = Footer(text=style["footer_text"], icon_url=style["footer_icon_url"])
     author_obj = Author(name=author, icon_url=author_icon)
 
+    # mdxcanvas < 0.7.8 wrote [name, url] here; 0.7.8 and later write
+    # [type, name, url], which is what this formats. Say so rather than failing
+    # later on an unpack, which is how it surfaced in production.
+    for item in data["content_to_review"]:
+        if len(item) != 3:
+            raise ValueError(
+                f"content_to_review entry {item!r} has {len(item)} fields, "
+                "expected [type, name, url]. This needs mdxcanvas >= 0.7.8."
+            )
+
     data["deployed_content"] = sorted(data["deployed_content"], key=lambda item: item[1].lower())
     data["content_to_review"] = sorted(data["content_to_review"], key=lambda item: item[1].lower())
 

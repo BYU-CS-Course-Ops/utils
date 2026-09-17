@@ -330,6 +330,7 @@ class TestValidateNotification:
         assert any("embed count" in v.lower() for v in violations)
 
 
+import pytest
 import json
 from pathlib import Path
 
@@ -444,3 +445,40 @@ class TestIntegrationWithRealPayload:
             "error": "",
         }
         assert has_content(data) is False
+
+
+class TestPayloadShape:
+    """The payload is mdxcanvas output, so its shape is a contract between the
+    two repos and nothing declares it.
+
+    mdxcanvas < 0.7.8 wrote content_to_review as [name, url]; 0.7.8 and later
+    write [type, name, url]. A CS 312 deploy hit that: the first run where the
+    list was non-empty died on `for content_type, name, url in ...` with
+    "not enough values to unpack", after the deploy had already happened.
+    """
+
+    @staticmethod
+    def _load(name):
+        with open(Path(__file__).parent / name) as f:
+            return json.load(f)
+
+    def _format(self, data):
+        return format_notification(
+            data=data, course_id="110", course_name="Test Course",
+            course_url="https://byu.instructure.com/courses/20736",
+            author="tester", author_icon="", branch="main",
+            action_url="https://github.com/BYU-CS-Course-Ops/utils",
+        )
+
+    def test_a_legacy_two_field_entry_says_what_is_wrong(self):
+        data = self._load("test-legacy-shape-mdxcanvas-payload.json")
+        with pytest.raises(ValueError) as excinfo:
+            self._format(data)
+        message = str(excinfo.value)
+        assert "0.7.8" in message, message
+        assert "type, name, url" in message, message
+
+    def test_the_current_shape_still_formats(self):
+        """The guard must not reject what mdxcanvas actually writes today."""
+        data = self._load("test-urgent-mdxcanvas-payload.json")
+        assert self._format(data) is not None
