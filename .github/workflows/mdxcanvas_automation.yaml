@@ -4,13 +4,23 @@ on:
   workflow_call:
     inputs:
       course_id:
-        required: true
+        description: >-
+          Deprecated, and ignored unless course_info_path cannot be read:
+          CANVAS_COURSE_ID in that file is authoritative. Safe to drop.
+        required: false
+        default: ""
         type: string
       course_name:
+        description: >-
+          Course name for the Discord message. E.g. "CS 312"
         required: true
         type: string
       course_url:
-        required: true
+        description: >-
+          Deprecated, and ignored unless course_info_path cannot be read:
+          derived from CANVAS_API_URL and CANVAS_COURSE_ID. Safe to drop.
+        required: false
+        default: ""
         type: string
       utils_ref:
         required: false
@@ -104,6 +114,38 @@ jobs:
           echo "=== MDXCanvas STDERR ==="
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
 
+      # The course id and URL are already in the file the deploy reads, so they
+      # are derived from it rather than taken on trust from the caller. They
+      # label the Discord message, and nothing enforced that a hand-written
+      # pair matched the course actually deployed to.
+      - name: Resolve course id and URL
+        id: course
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          INFO="${{ github.workspace }}/${{ inputs.course_info_path }}"
+          if DERIVED=$(python3 utils/notifications/course_facts.py "$INFO"); then
+            echo "$DERIVED" >> "$GITHUB_OUTPUT"
+            GOT_ID=$(printf '%s\n' "$DERIVED" | sed -n 's/^course_id=//p')
+            GOT_URL=$(printf '%s\n' "$DERIVED" | sed -n 's/^course_url=//p')
+            for pair in "course_id|${{ inputs.course_id }}|$GOT_ID" \
+                        "course_url|${{ inputs.course_url }}|$GOT_URL"; do
+              IFS='|' read -r name given derived <<< "$pair"
+              if [ -n "$given" ] && [ "$given" != "$derived" ]; then
+                echo "::warning::$name is $given in this workflow but $derived in" \
+                     "${{ inputs.course_info_path }}. The file wins; drop the input."
+              fi
+            done
+          else
+            # Never let a label stop a deploy being reported: fall back to what
+            # the caller passed, and say why.
+            echo "::warning::could not read the course id and URL from" \
+                 "${{ inputs.course_info_path }}; using the values this workflow was called with"
+            echo "course_id=${{ inputs.course_id }}" >> "$GITHUB_OUTPUT"
+            echo "course_url=${{ inputs.course_url }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Send course notification
         if: always()
         uses: ./utils/.github/actions/send-course-notification
@@ -113,9 +155,9 @@ jobs:
           payload-path: ${{ env.OUTPUT_PATH }}
           stdout-log: ${{ env.LOGS_DIR }}/mdxcanvas.stdout.log
           stderr-log: ${{ env.LOGS_DIR }}/mdxcanvas.stderr.log
-          course-id: ${{ inputs.course_id }}
+          course-id: ${{ steps.course.outputs.course_id }}
           course-name: ${{ inputs.course_name }}
-          course-url: ${{ inputs.course_url }}
+          course-url: ${{ steps.course.outputs.course_url }}
           discord-role: ${{ secrets.discord_role }}
           discord-webhook-url: ${{ secrets.discord_webhook_url }}
 
