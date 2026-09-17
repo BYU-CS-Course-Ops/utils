@@ -12,9 +12,7 @@ on:
         type: string
       course_name:
         description: >-
-          Course name for the Discord message. Still an input: it lives in a
-          COURSE_SETTINGS XML fragment in four courses and a flat COURSE_NAME
-          field in CS 235, which is more fragile to parse than to pass.
+          Course name for the Discord message. E.g. "CS 312"
         required: true
         type: string
       course_url:
