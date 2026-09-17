@@ -27,11 +27,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      # There is no pyproject.toml or requirements file; these are the three
-      # third-party imports in the tree, and the same three the course
-      # workflows install for the notification step.
+      # There is no pyproject.toml or requirements file; these are the
+      # third-party imports in the tree, and the same set the course workflows
+      # install for the notification step. pyyaml is listed because
+      # notifications/course_facts.py imports it directly -- it happens to
+      # arrive with the others today, and inheriting a dependency is how a
+      # suite starts failing for reasons nobody changed.
       - name: Install dependencies
-        run: pip install pytest discord-webhook markdowndata tabulate
+        run: pip install pytest discord-webhook markdowndata tabulate pyyaml
 
       - name: Run tests
         run: python -m pytest tests -v
