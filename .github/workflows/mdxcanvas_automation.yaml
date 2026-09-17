@@ -4,9 +4,7 @@ on:
   workflow_call:
     inputs:
       course_id:
-        description: >-
-          Deprecated, and ignored unless course_info_path cannot be read:
-          CANVAS_COURSE_ID in that file is authoritative. Safe to drop.
+        description: Deprecated. Read from course_info_path; omit it.
         required: false
         default: ""
         type: string
@@ -16,9 +14,7 @@ on:
         required: true
         type: string
       course_url:
-        description: >-
-          Deprecated, and ignored unless course_info_path cannot be read:
-          derived from CANVAS_API_URL and CANVAS_COURSE_ID. Safe to drop.
+        description: Deprecated. Read from course_info_path; omit it.
         required: false
         default: ""
         type: string
@@ -114,10 +110,7 @@ jobs:
           echo "=== MDXCanvas STDERR ==="
             cat "$LOGS_DIR/mdxcanvas.stderr.log"
 
-      # The course id and URL are already in the file the deploy reads, so they
-      # are derived from it rather than taken on trust from the caller. They
-      # label the Discord message, and nothing enforced that a hand-written
-      # pair matched the course actually deployed to.
+      # Warns if the caller passed values that disagree with the file.
       - name: Resolve course id and URL
         id: course
         if: always()
@@ -138,8 +131,7 @@ jobs:
               fi
             done
           else
-            # Never let a label stop a deploy being reported: fall back to what
-            # the caller passed, and say why.
+            # Fall back rather than fail: these are only labels.
             echo "::warning::could not read the course id and URL from" \
                  "${{ inputs.course_info_path }}; using the values this workflow was called with"
             echo "course_id=${{ inputs.course_id }}" >> "$GITHUB_OUTPUT"

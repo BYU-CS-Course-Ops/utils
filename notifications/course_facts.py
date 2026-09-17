@@ -1,21 +1,11 @@
 """Read the course id and Canvas URL out of a course's course-info file.
 
-Every caller of the reusable workflows passes `course_id` and `course_url` by
-hand alongside `course_info_path`, so the same two facts live in two places and
-nothing checks that they agree. They are labels on the Discord notification, so
-a mismatch does not fail a deploy -- it misreports which course was touched.
-
-Both values are already in the course-info file the deploy reads, so they can be
-derived instead of repeated:
-
     CANVAS_COURSE_ID -> course_id
     CANVAS_API_URL   -> course_url, as "<api_url>courses/<id>"
 
-The file is YAML for most courses and JSON for CS 235, and JSON is valid YAML,
-so one parser covers both. `course_name` is deliberately NOT derived: it lives
-in a COURSE_SETTINGS XML fragment for four courses and a flat COURSE_NAME field
-for CS 235, with two quoting styles between them. Parsing that is more fragile
-than the duplication it would remove, so the name stays an input.
+Course-info files are YAML, except CS 235's which is JSON. JSON is valid YAML,
+so one parser covers both. The course name is not read here: it is a
+COURSE_SETTINGS XML fragment in some files and a COURSE_NAME field in others.
 
 Usage, from a workflow step:
 
@@ -50,8 +40,7 @@ def course_facts(path: Path) -> dict[str, str]:
     if missing:
         raise CourseFactsError(f"{path} does not set {' and '.join(missing)}")
 
-    # A trailing slash is present in every course-info file today, but joining
-    # on the assumption would produce a double slash the first time one is not.
+    # rstrip so a file without the usual trailing slash does not double it.
     return {
         "course_id": str(course_id).strip(),
         "course_url": f"{str(api_url).strip().rstrip('/')}/courses/{str(course_id).strip()}",
