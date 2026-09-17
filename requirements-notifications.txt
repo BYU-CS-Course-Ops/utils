@@ -11,3 +11,6 @@
 discord-webhook
 markdowndata
 tabulate
+# Imported directly by notifications/course_facts.py. It arrives with the three
+# above today; naming it means the deploy does not depend on that staying true.
+pyyaml
