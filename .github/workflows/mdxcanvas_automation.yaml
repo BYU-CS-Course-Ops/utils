@@ -77,7 +77,7 @@ jobs:
 
       - name: Install notification dependencies
         shell: bash
-        run: pip install discord-webhook markdowndata tabulate ${{ inputs.extra-packages }}
+        run: pip install discord-webhook markdowndata tabulate pyyaml ${{ inputs.extra-packages }}
 
       - name: Create logs directory
         run: mkdir -p "$LOGS_DIR"
