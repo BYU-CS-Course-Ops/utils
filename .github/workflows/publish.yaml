@@ -46,10 +46,10 @@ on:
         description: "PyPI API token used for publishing"
         required: true
       discord_webhook_url:
-        description: "Discord webhook URL"
+        description: "One destination per line: webhook URL followed by optional space-separated role IDs"
         required: true
       discord_role:
-        description: "Optional Discord role ID to mention"
+        description: "Fallback role ID for webhook lines without explicit role IDs"
         required: false
 
 permissions:

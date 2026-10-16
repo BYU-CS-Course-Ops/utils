@@ -34,10 +34,10 @@ on:
         type: boolean
     secrets:
       discord_webhook_url:
-        description: "Discord webhook URL"
+        description: "One destination per line: webhook URL followed by optional space-separated role IDs"
         required: true
       discord_role:
-        description: "Optional Discord role ID to mention"
+        description: "Fallback role ID for webhook lines without explicit role IDs"
         required: false
 
 permissions:
@@ -58,7 +58,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Build Discord payload
+      - name: Build and send Discord notifications
         env:
           PROJECT_NAME: ${{ inputs.project_name }}
           INPUT_VERSION: ${{ inputs.version }}
@@ -70,13 +70,15 @@ jobs:
           COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
           REPOSITORY: ${{ github.repository }}
           DISCORD_ROLE_ID: ${{ secrets.discord_role }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
         run: |
-          python - <<'PY' > discord-payload.json
+          python - <<'PY'
           import json
           import os
           import re
           from pathlib import Path
           import tomllib
+          from urllib.request import Request, urlopen
 
           root = Path.cwd()
           project_name = os.environ["PROJECT_NAME"]
@@ -123,41 +125,62 @@ jobs:
                   if note_lines:
                       changelog_section = "Changelog\n" + "\n".join(note_lines)
 
-          role_id = os.environ.get("DISCORD_ROLE_ID", "").strip()
-          role_mention = f"<@&{role_id}> " if role_id else ""
+          fallback_role = os.environ.get("DISCORD_ROLE_ID", "").strip()
+          destinations = []
+          for line_number, line in enumerate(os.environ["DISCORD_WEBHOOK_URL"].splitlines(), 1):
+              parts = line.split()
+              if not parts:
+                  continue
+              url, *roles = parts
+              if not roles and fallback_role:
+                  roles = [fallback_role]
+              if any(not re.fullmatch(r"[0-9]+", role) for role in roles):
+                  raise SystemExit(f"Invalid Discord role ID on destination line {line_number}")
+              destinations.append((url, list(dict.fromkeys(roles))))
+          if not destinations:
+              raise SystemExit("At least one Discord webhook URL is required")
+
           succeeded = os.environ["RELEASE_SUCCESS"].lower() == "true"
           status = "was released successfully" if succeeded else "release failed"
-          prefix = f"{role_mention}{project_name} {version} {status}."
           commit = f"Commit: `{os.environ['COMMIT_SHA'][:7]}` in `{os.environ['REPOSITORY']}`"
 
-          sections = [prefix, os.environ["COMMIT_URL"]]
-          if changelog_section and succeeded:
-              sections.extend([changelog_section, commit])
-          else:
-              sections.append(commit)
-          content = "\n\n".join(sections)
+          def build_payload(roles):
+              role_mention = " ".join(f"<@&{role}>" for role in roles)
+              prefix = f"{role_mention + ' ' if role_mention else ''}{project_name} {version} {status}."
+              sections = [prefix, os.environ["COMMIT_URL"]]
+              if changelog_section and succeeded:
+                  sections.extend([changelog_section, commit])
+              else:
+                  sections.append(commit)
+              content = "\n\n".join(sections)
 
-          if len(content) > 2000 and changelog_section:
-              fixed = "\n\n".join([prefix, os.environ["COMMIT_URL"], "", commit])
-              available = max(0, 2000 - len(fixed) - len("Changelog\n") - 2)
-              notes = changelog_section[len("Changelog\n"):]
-              shortened = notes[:available].rstrip()
-              if len(shortened) < len(notes):
-                  shortened = shortened.rstrip(".") + "..."
-              content = "\n\n".join([prefix, os.environ["COMMIT_URL"], "Changelog\n" + shortened, commit])
+              if len(content) > 2000 and changelog_section and succeeded:
+                  fixed = "\n\n".join([prefix, os.environ["COMMIT_URL"], "", commit])
+                  available = max(0, 2000 - len(fixed) - len("Changelog\n") - len("..."))
+                  notes = changelog_section[len("Changelog\n"):]
+                  shortened = notes[:available].rstrip()
+                  if len(shortened) < len(notes):
+                      shortened = shortened.rstrip(".") + "..."
+                  content = "\n\n".join([prefix, os.environ["COMMIT_URL"], "Changelog\n" + shortened, commit])
 
-          payload = {"content": content}
-          if role_id:
-              payload["allowed_mentions"] = {"parse": [], "roles": [role_id]}
-          print(json.dumps(payload))
+              return {"content": content, "allowed_mentions": {"parse": [], "roles": roles}}
+
+          failed = False
+          for index, (url, roles) in enumerate(destinations, 1):
+              try:
+                  request = Request(
+                      url,
+                      data=json.dumps(build_payload(roles)).encode(),
+                      headers={"Content-Type": "application/json", "User-Agent": "GitHub-Actions-Discord-Notifier"},
+                      method="POST",
+                  )
+                  with urlopen(request, timeout=30):
+                      pass
+                  print(f"Sent Discord notification to destination {index}")
+              except Exception:
+                  # Exception messages and response bodies can expose webhook credentials.
+                  print(f"Failed to send Discord notification to destination {index}")
+                  failed = True
+          if failed:
+              raise SystemExit("One or more Discord notifications failed")
           PY
-
-      - name: Post to Discord
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.discord_webhook_url }}
-        run: |
-          test -n "$DISCORD_WEBHOOK_URL"
-          curl -sS --fail-with-body -X POST \
-            -H "Content-Type: application/json" \
-            --data @discord-payload.json \
-            "$DISCORD_WEBHOOK_URL"

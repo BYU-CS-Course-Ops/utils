@@ -105,8 +105,29 @@ Inputs:
 
 Required and optional secrets:
 
-- `discord_webhook_url` (**required**): Discord webhook URL.
-- `discord_role` (optional): Discord role ID to mention.
+- `discord_webhook_url` (**required**): One destination per line: a webhook URL followed by zero or more whitespace-separated role IDs.
+- `discord_role` (optional): Legacy fallback role ID, used only for destination lines without explicit role IDs.
+
+### Multiple destinations and migration
+
+For `release_notify.yaml` and `publish.yaml`, your `GHA_DISCORD_WEBHOOK` secret (or whichever secret you pass as `discord_webhook_url`) can contain:
+
+```text
+https://discord.com/api/webhooks/CHANNEL_A/TOKEN_A 123456789012345678 234567890123456789
+https://discord.com/api/webhooks/CHANNEL_B/TOKEN_B 345678901234567890
+https://discord.com/api/webhooks/CHANNEL_C/TOKEN_C
+```
+
+Each destination receives its own notification mentioning only its configured roles. Blank lines are ignored. A single URL remains supported. Lines without role IDs use `discord_role` if supplied; otherwise they mention no roles. Explicit role IDs replace, rather than supplement, the fallback role.
+
+To consolidate configuration, put role IDs beside the URLs and remove the caller's `discord_role` secret mapping once no destinations need the fallback:
+
+```yaml
+    secrets:
+      discord_webhook_url: ${{ secrets.GHA_DISCORD_WEBHOOK }}
+```
+
+All destinations are attempted even if one fails; any delivery failure fails the notification job without logging webhook credentials. Other notification workflows retain their existing single-URL format.
 
 ### Project using TOML version metadata
 
