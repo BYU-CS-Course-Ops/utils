@@ -62,6 +62,26 @@ def test_multiple_destinations_override_fallback_and_ignore_blank_lines(run_noti
     assert all(request.method == "POST" for request in requests)
 
 
+def test_comment_lines_are_ignored(run_notification):
+    payloads = run_notification(
+        "# Primary destination\n"
+        "https://discord.com/api/webhooks/one/token 111\n"
+        "  # Indented comment\n"
+        "#https://discord.com/api/webhooks/disabled/token 222\n"
+        "\t# Another comment\r\n"
+        "https://discord.com/api/webhooks/two/token\n",
+        "999",
+    )
+    assert len(payloads) == 2
+    assert [p["allowed_mentions"]["roles"] for p in payloads] == [["111"], ["999"]]
+
+
+def test_comments_only_require_a_destination(run_notification):
+    with pytest.raises(SystemExit, match="At least one Discord webhook URL is required"):
+        run_notification("# Comment\n  # Another comment\n")
+    run_notification.sender.assert_not_called()
+
+
 def test_no_roles_disables_mentions(run_notification):
     payload, = run_notification("https://discord.com/api/webhooks/one/token")
     assert payload["content"].startswith("Example")

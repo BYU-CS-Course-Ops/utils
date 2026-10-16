@@ -118,7 +118,7 @@ https://discord.com/api/webhooks/CHANNEL_B/TOKEN_B 345678901234567890
 https://discord.com/api/webhooks/CHANNEL_C/TOKEN_C
 ```
 
-Each destination receives its own notification mentioning only its configured roles. Blank lines are ignored. A single URL remains supported. Lines without role IDs use `discord_role` if supplied; otherwise they mention no roles. Explicit role IDs replace, rather than supplement, the fallback role.
+Each destination receives its own notification mentioning only its configured roles. Blank lines and lines starting with `#` (including after leading whitespace) are ignored, so you can add comments or disable destinations. A single URL remains supported. Lines without role IDs use `discord_role` if supplied; otherwise they mention no roles. Explicit role IDs replace, rather than supplement, the fallback role.
 
 To consolidate configuration, put role IDs beside the URLs and remove the caller's `discord_role` secret mapping once no destinations need the fallback:
 
